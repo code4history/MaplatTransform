@@ -10,9 +10,11 @@ import type {
 } from "./geometry";
 import { unitCalc, transformArr } from "./geometry";
 import type { EdgeSet, EdgeSetLegacy } from "./edgeutils";
-export * from './geometry';
-export * from './triangulation';
-export * from './edgeutils';
+export type { Tri, PropertyTriKey } from './geometry';
+export { transformArr } from './geometry';
+export { rotateVerticesTriangle, counterTri } from './triangulation';
+export type { EdgeSet, EdgeSetLegacy } from './edgeutils';
+export { normalizeEdges } from './edgeutils';
 
 /**
  * 座標ペアの型定義。[ソース座標, ターゲット座標] の形式
