@@ -10,10 +10,10 @@ import type {
 } from "./geometry";
 import { unitCalc, transformArr } from "./geometry";
 import type { EdgeSet, EdgeSetLegacy } from "./edgeutils";
-export type { Tri, PropertyTriKey } from './geometry';
+export type { Tins, Tri, PropertyTriKey } from './geometry';
 export { transformArr } from './geometry';
 export { rotateVerticesTriangle, counterTri } from './triangulation';
-export type { EdgeSet, EdgeSetLegacy } from './edgeutils';
+export type { Edge, EdgeSet, EdgeSetLegacy } from './edgeutils';
 export { normalizeEdges } from './edgeutils';
 
 /**
