@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Transform } from '../src/transform';
+import { Transform } from '../src';
 import fs from 'fs';
 
 const datasets = [
@@ -7,7 +7,7 @@ const datasets = [
   ["Fushimi", "fushimijo_maplat"]
 ];
 
-describe('Tin', () => {
+describe('Transform', () => {
   datasets.forEach(([town, filename]) => {
     describe(`Test by actual data (${town})`, () => {
       const cases:[[[number,number], [number,number]]] = JSON.parse(fs.readFileSync(`${__dirname}/cases/${filename}.json`, 'utf-8'));

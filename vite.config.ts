@@ -12,17 +12,17 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, 'src/index.ts'),
       formats: ['es', 'cjs', 'umd'],
-      name: 'maplat_tin',
+      name: 'maplat_transform',
       fileName: (format, entryName) => {
         switch(format) {
           case 'es':
-            return 'maplat_tin.js';
+            return 'maplat_transform.js';
           case 'cjs':
-            return 'maplat_tin.cjs';
+            return 'maplat_transform.cjs';
           case 'umd':
-            return 'maplat_tin.umd.js';
+            return 'maplat_transform.umd.js';
           default:
-            return 'maplat_tin.js';
+            return 'maplat_transform.js';
         }
       }
     }
@@ -30,16 +30,10 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     rollupOptions: {
-      external: ['@turf/turf', 'delaunator', '@kninnug/constrainautor'],
       input: {
         main: resolve(__dirname, 'index.html')
       },
       output: {
-        globals: {
-          '@turf/turf': 'turf',
-          'delaunator': 'Delaunator',
-          '@kninnug/constrainautor': 'Constrainautor'
-        },
         entryFileNames: 'assets/[name].[hash].js',
         chunkFileNames: 'assets/[name].[hash].js',
         assetFileNames: 'assets/[name].[hash][extname]'

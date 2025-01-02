@@ -1,18 +1,18 @@
 {
-  "name": "@maplat/tin",
+  "name": "@maplat/transform",
   "private": false,
-  "version": "0.10.0",
-  "description": "JavaScript library which performs homeomorphic conversion mutually between the coordinate systems of two planes based on the control points.",
+  "version": "0.1.0",
+  "description": "JavaScript library which transform coordinates between the coordinate systems of two planes based on Maplat spec.",
   "type": "module",
-  "main": "./dist/maplat_tin.cjs",
-  "module": "./dist/maplat_tinjs",
-  "browser": "./dist/maplat_tin.umd.js",
+  "main": "./dist/maplat_transform.cjs",
+  "module": "./dist/maplat_transform.js",
+  "browser": "./dist/maplat_transform.umd.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/maplat_tin.js",
-      "require": "./dist/maplat_tin.cjs",
-      "browser": "./dist/maplat_tin.umd.js",
+      "import": "./dist/maplat_transform.js",
+      "require": "./dist/maplat_transform.cjs",
+      "browser": "./dist/maplat_transform.umd.js",
       "types": "./dist/index.d.ts"
     }
   },
@@ -33,38 +33,24 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/code4history/MaplatTin.git"
+    "url": "git+https://github.com/code4history/MaplatTransform.git"
   },
   "author": "Code for History",
   "license": "Maplat Limited License 1.1",
   "bugs": {
-    "url": "https://github.com/code4history/MaplatTin/issues"
+    "url": "https://github.com/code4history/MaplatTransform/issues"
   },
-  "homepage": "https://github.com/code4history/MaplatTin/wiki",
+  "homepage": "https://github.com/code4history/MaplatTransform/wiki",
   "keywords": [
-    "triangulation",
-    "warp",
+    "projection",
     "GIS",
     "Maplat",
-    "MaplatTin"
+    "MaplatTransform"
   ],
-  "peerDependencies": {
-    "@turf/centroid": "^7.2.0",
-    "@turf/convex": "^7.2.0",
-    "@turf/difference": "^7.2.0",
-    "@turf/helpers": "^7.2.0",
-    "@turf/intersect": "^7.2.0",
-    "@turf/invariant": "^7.2.0",
-    "@turf/line-intersect": "^7.2.0",
-    "@turf/turf": "^7.2.0",
-    "@turf/union": "^7.2.0",
-    "delaunator": "^5.0.0"
-  },
+  "peerDependencies": {},
   "devDependencies": {
     "@eslint/js": "^9.17.0",
     "@testing-library/jest-dom": "^6.6.3",
-    "@turf/helpers": "^7.2.0",
-    "@types/delaunator": "^5.0.3",
     "@types/geojson": "^7946.0.15",
     "@types/node": "^22.10.2",
     "@typescript-eslint/eslint-plugin": "^8.18.2",
@@ -82,6 +68,8 @@
     "vitest": "^1.6.0"
   },
   "dependencies": {
-    "@maplat/edgeruler": "^0.1.1"
+    "@turf/boolean-point-in-polygon": "^7.2.0",
+    "@turf/helpers": "7.2.0",
+    "@turf/invariant": "^7.2.0"
   }
 }
