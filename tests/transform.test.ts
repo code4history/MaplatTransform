@@ -4,8 +4,22 @@ import fs from 'fs';
 
 const datasets = [
   ["Nara", "naramachi_yasui_bunko"],
-  ["Fushimi", "fushimijo_maplat"]
+  ["Fushimi", "fushimijo_maplat"],
+  ["Burari", "burakita-2024"]
 ];
+
+/*const burari = JSON.parse(fs.readFileSync(`${__dirname}/compiled/burakita-2024.json`, 'utf-8'));
+const tin = new Transform();
+tin.setCompiled(burari.compiled);
+console.log(tin.wh);
+for (let i = -2; i <= 12; i++) {
+  const x = i * 0.1 * tin.wh![0];
+  for (let j = -2; j <= 12; j++) {
+    const y = j * 0.1 * tin.wh![1];
+    const [mx, my] = tin.transform([x, y]) as [number, number];
+    console.log(`  [[${x}, ${y}], [${mx},${my}]],`);
+  }
+}*/
 
 describe('Transform', () => {
   datasets.forEach(([town, filename]) => {
