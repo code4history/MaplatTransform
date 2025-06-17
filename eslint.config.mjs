@@ -6,6 +6,9 @@ import prettier from "eslint-config-prettier";
 
 const config = [
   {
+    ignores: ["tests/transform.deno.test.ts"]
+  },
+  {
     linterOptions: {
       reportUnusedDisableDirectives: true,
     }
@@ -46,7 +49,7 @@ const config = [
   prettier,
 
   {
-    ignores: ["dist/**", "node_modules/**", "*.js"],
+    ignores: ["dist/**", "node_modules/**", "*.js", "tests/transform.deno.test.ts"],
     languageOptions: {
       sourceType: "module",
       globals: {

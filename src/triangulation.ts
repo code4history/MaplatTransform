@@ -1,6 +1,6 @@
 import { polygon } from "@turf/helpers";
-import { Position } from "geojson";
-import { PropertyTriKey, Tri, Tins } from "./geometry";
+import type { Position } from "geojson";
+import { PropertyTriKey, Tri, Tins } from "./geometry.ts";
 
 /**
  * 三角形の頂点の順序を修正する
@@ -8,7 +8,7 @@ import { PropertyTriKey, Tri, Tins } from "./geometry";
  * @param tins 三角形群
  * @returns 頂点順序が修正された三角形群
  */
-function rotateVerticesTriangle(tins: Tins) {
+function rotateVerticesTriangle(tins: Tins): Tins {
   const features = tins.features;
   for (let i = 0; i < features.length; i++) {
     const feature = features[i];

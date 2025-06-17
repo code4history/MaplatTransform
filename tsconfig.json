@@ -28,5 +28,5 @@
     ]
   },
   "include": ["src/**/*", "tests/**/*", "types/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "dist", "tests/transform.deno.test.ts"]
 }

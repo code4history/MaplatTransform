@@ -1,5 +1,5 @@
 import { assertEquals, assertAlmostEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { Transform } from "../src/index.ts";
+import { Transform } from "../mod.ts";
 
 const datasets = [
   ["Nara", "naramachi_yasui_bunko"],

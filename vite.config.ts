@@ -6,6 +6,23 @@ import { readFileSync } from 'fs';
 const packageJson = JSON.parse(readFileSync('./package.json', 'utf-8'));
 const isPackageBuild = process.env.BUILD_MODE === 'package';
 
+// Plugin to remove .ts extensions from imports
+const removeTsExtensions = () => {
+  return {
+    name: 'remove-ts-extensions',
+    transform(code, id) {
+      if (id.endsWith('.ts') || id.endsWith('.tsx')) {
+        // Replace imports with .ts extensions
+        return code.replace(
+          /from\s+['"](\.\/[^'"]+)\.ts['"]/g,
+          'from "$1"'
+        );
+      }
+      return code;
+    }
+  };
+};
+
 export default defineConfig({
   base: './',
   build: isPackageBuild ? {
@@ -41,10 +58,14 @@ export default defineConfig({
     }
   },
   plugins: [
+    removeTsExtensions(),
     dts({
       outDir: 'dist',
       exclude: ['tests'],
-      rollupTypes: true
+      rollupTypes: true,
+      skipDiagnostics: true,
+      tsconfigPath: './tsconfig.build.json',
+      logLevel: 'silent'
     })
   ],
   test: {

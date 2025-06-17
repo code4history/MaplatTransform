@@ -26,13 +26,13 @@
   ],
   "scripts": {
     "dev": "vite",
-    "build": "tsc && cross-env BUILD_MODE=package vite build",
+    "build": "npm run typecheck && cross-env BUILD_MODE=package vite build",
+    "typecheck": "tsc --noEmit --allowImportingTsExtensions",
     "deploy": "cp public/*.html ./ && tsc && vite build",
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "lint": "eslint src tests",
-    "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run build"
   },
   "repository": {

@@ -1,7 +1,7 @@
 {
   "name": "@maplat/transform",
   "version": "0.2.0",
-  "exports": "./src/index.ts",
+  "exports": "./mod.ts",
   "tasks": {
     "dev": "deno run --watch src/index.ts",
     "test": "deno test --allow-read tests/transform.deno.test.ts",
@@ -13,7 +13,7 @@
     "@turf/boolean-point-in-polygon": "npm:@turf/boolean-point-in-polygon@^7.2.0",
     "@turf/helpers": "npm:@turf/helpers@7.2.0",
     "@turf/invariant": "npm:@turf/invariant@^7.2.0",
-    "geojson": "npm:@types/geojson@^7946.0.18"
+    "geojson": "npm:@types/geojson@^7946.0.14"
   },
   "compilerOptions": {
     "strict": true,

@@ -1,20 +1,20 @@
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 import { featureCollection, point } from "@turf/helpers";
 import { getCoords } from "@turf/invariant";
-import { indexesToTri, normalizeNodeKey } from "./triangulation";
-import { Feature, Polygon, Position, Point, FeatureCollection } from "geojson";
-import { normalizeEdges } from "./edgeutils";
+import { indexesToTri, normalizeNodeKey } from "./triangulation.ts";
+import type { Feature, Polygon, Position, Point, FeatureCollection } from "geojson";
+import { normalizeEdges } from "./edgeutils.ts";
 import type { 
   WeightBuffer, Tins, VerticesParams, PropertyTriKey, 
   IndexedTins, Tri
-} from "./geometry";
-import { unitCalc, transformArr } from "./geometry";
-import type { EdgeSet, EdgeSetLegacy } from "./edgeutils";
-export type { Tins, Tri, PropertyTriKey } from './geometry';
-export { transformArr } from './geometry';
-export { rotateVerticesTriangle, counterTri } from './triangulation';
-export type { Edge, EdgeSet, EdgeSetLegacy } from './edgeutils';
-export { normalizeEdges } from './edgeutils';
+} from "./geometry.ts";
+import { unitCalc, transformArr } from "./geometry.ts";
+import type { EdgeSet, EdgeSetLegacy } from "./edgeutils.ts";
+export type { Tins, Tri, PropertyTriKey } from './geometry.ts';
+export { transformArr } from './geometry.ts';
+export { rotateVerticesTriangle, counterTri } from './triangulation.ts';
+export type { Edge, EdgeSet, EdgeSetLegacy } from './edgeutils.ts';
+export { normalizeEdges } from './edgeutils.ts';
 
 /**
  * 座標ペアの型定義。[ソース座標, ターゲット座標] の形式
@@ -164,7 +164,7 @@ export class Transform {
    * 3. TINネットワークの再構築
    * 4. インデックスの作成
    */
-  setCompiled(compiled: Compiled | CompiledLegacy) {
+  setCompiled(compiled: Compiled | CompiledLegacy): void {
     if (
       compiled.version ||
       (!(compiled as CompiledLegacy).tins && compiled.points && compiled.tins_points)
@@ -338,15 +338,6 @@ export class Transform {
       }
       this.points = points;
     }
-    // 翻訳したオブジェクトを返す
-    return {
-      tins: this.tins,
-      strict_status: this.strict_status,
-      weight_buffer: this.pointsWeightBuffer,
-      vertices_params: this.vertices_params,
-      centroid: this.centroid,
-      kinks: this.kinks
-    };
   }
 
   /**
@@ -519,7 +510,7 @@ export class Transform {
    * 
    * @throws {Error} 逆方向変換が許可されていない状態での逆変換時
    */
-  transform(apoint: number[], backward?: boolean, ignoreBounds?: boolean) {
+  transform(apoint: number[], backward?: boolean, ignoreBounds?: boolean): number[] | false {
     if (backward && this.strict_status == Transform.STATUS_ERROR)
       throw 'Backward transform is not allowed if strict_status == "strict_error"';
     // if (!this.tins) this.updateTin();

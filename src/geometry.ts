@@ -1,6 +1,6 @@
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 import { featureCollection } from "@turf/helpers";
-import { Feature, FeatureCollection, Polygon, Point, Position } from "geojson";
+import type { Feature, FeatureCollection, Polygon, Point, Position } from "geojson";
 //import { Tri, Tins, IndexedTins, WeightBuffer, VerticesParams } from "./index";
 type PropertyTri = { geom: Position; index: number | string };
 export type PropertyTriKey = "a" | "b" | "c";

@@ -1,4 +1,4 @@
-import { Position } from "geojson";
+import type { Position } from "geojson";
 
 /**
  * エッジの終点を表す型
