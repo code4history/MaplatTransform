@@ -67,3 +67,6 @@ typings/
 # Deno
 .deno/
 deno.lock
+
+#Claude recommendation
+*_shouldChange.md
