@@ -167,7 +167,7 @@ export class Transform {
   setCompiled(compiled: Compiled | CompiledLegacy) {
     if (
       compiled.version ||
-      (!(compiled as any).tins && compiled.points && compiled.tins_points)
+      (!(compiled as CompiledLegacy).tins && compiled.points && compiled.tins_points)
     ) {
       // 新コンパイルロジック
       // pointsはそのままpoints
@@ -250,7 +250,7 @@ export class Transform {
       const bakwI = compiled.tins_points.length == 1 ? 0 : 1;
       this.tins = {
       forw: featureCollection(
-        compiled.tins_points[0].map((idxes: any) =>
+        compiled.tins_points[0].map((idxes: (number | string)[]) =>
         indexesToTri(
           idxes,
           compiled.points,
@@ -263,7 +263,7 @@ export class Transform {
         )
       ),
       bakw: featureCollection(
-        compiled.tins_points[bakwI].map((idxes: any) =>
+        compiled.tins_points[bakwI].map((idxes: (number | string)[]) =>
         indexesToTri(
           idxes,
           compiled.points,
@@ -324,14 +324,16 @@ export class Transform {
       this.vertices_params = compiled.vertices_params as VerticesParamsBD;
       this.centroid = (compiled as CompiledLegacy).centroid;
       this.kinks = (compiled as CompiledLegacy).kinks;
-      const points: any = [];
+      const points: PointSet[] = [];
       for (let i = 0; i < this.tins!.forw!.features.length; i++) {
       const tri = this.tins!.forw!.features[i];
       (["a", "b", "c"] as PropertyTriKey[]).map((key, idx) => {
         const forw = tri.geometry!.coordinates[0][idx];
         const bakw = tri.properties![key].geom;
         const pIdx = tri.properties![key].index;
-        points[pIdx] = [forw, bakw];
+        if (typeof pIdx === 'number') {
+          points[pIdx] = [forw, bakw];
+        }
       });
       }
       this.points = points;
@@ -451,7 +453,7 @@ export class Transform {
     const bakwXUnit = (bakwBound[1][0] - bakwBound[0][0]) / gridNum;
     const bakwYUnit = (bakwBound[1][1] - bakwBound[0][1]) / gridNum;
     const bakwGridCache = bakwEachBound.reduce(
-      (prev: any, bound: any, index: number) => {
+      (prev: number[][][], bound: Position[], index: number) => {
         const normXMin = unitCalc(
           bound[0][0],
           bakwBound[0][0],

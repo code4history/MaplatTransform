@@ -8,7 +8,7 @@ type PropertiesTri = { [key in PropertyTriKey]: PropertyTri };
 export type Tri = Feature<Polygon, PropertiesTri>;
 export type Tins = FeatureCollection<Polygon, PropertiesTri>;
 export type WeightBuffer = { [index: string]: number };
-export type VerticesParams = [number[], FeatureCollection<Polygon>[]?];
+export type VerticesParams = [number[], Tins[]?];
 export interface IndexedTins {
   gridNum: number;
   xOrigin: number;
@@ -40,7 +40,7 @@ function hit(point: Feature<Point>, tins: Tins): Tri | undefined {
  * @param weightBuffer 重み付けバッファ（オプション）
  * @returns 変換後の座標
  */
-function transformTinArr(of: any, tri: any, weightBuffer: any) {
+function transformTinArr(of: Feature<Point>, tri: Tri, weightBuffer: WeightBuffer | undefined) {
   const a = tri.geometry.coordinates[0][0];
   const b = tri.geometry.coordinates[0][1];
   const c = tri.geometry.coordinates[0][2];
@@ -97,7 +97,10 @@ function useVerticesArr(
   const centCoord = centroid.geometry!.coordinates;
   const radian = Math.atan2(coord[0] - centCoord[0], coord[1] - centCoord[1]);
   const index = decideUseVertex(radian, verticesParams[0]);
-  const tin = verticesParams[1]![index as any];
+  if (index === undefined) {
+    throw new Error("Unable to determine vertex index");
+  }
+  const tin = verticesParams[1]![index];
   return transformTinArr(o, tin.features[0], weightBuffer);
 }
 
@@ -145,7 +148,7 @@ function transformArr(
           ? gridCache[normX][normY]
           : []
         : [];
-      tins = featureCollection(tinsKey.map((key: any) => tins.features[key]));
+      tins = featureCollection(tinsKey.map((key: number) => tins.features[key]));
     }
     tin = hit(point, tins);
   }
@@ -189,7 +192,7 @@ function unitCalc(
  * const index = decideUseVertex(0.5, [0, Math.PI/2, Math.PI, Math.PI*3/2]);
  * // returns 0 (最初の頂点が最も近い)
  */
-function decideUseVertex(radian: any, radianList: any) {
+function decideUseVertex(radian: number, radianList: number[]): number | undefined {
   // 最初の頂点との角度差を正規化
   let idel = normalizeRadian(radian - radianList[0]);
   let minTheta = Math.PI * 2;  // 最小角度差の初期値
@@ -226,13 +229,13 @@ function decideUseVertex(radian: any, radianList: any) {
 * // [0, 2π)の範囲に正規化
 * normalizeRadian(3 * Math.PI, true); // returns π
 */
-function normalizeRadian(target: any, noNegative = false) {
+function normalizeRadian(target: number, noNegative = false): number {
  // 正規化の範囲を決定する関数
  const rangeFunc = noNegative
-   ? function (val: any) {
+   ? function (val: number) {
        return !(val >= 0 && val < Math.PI * 2);  // [0, 2π)の範囲外
      }
-   : function (val: any) {
+   : function (val: number) {
        return !(val > -1 * Math.PI && val <= Math.PI);  // (-π, π]の範囲外
      };
 

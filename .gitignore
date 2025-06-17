@@ -63,3 +63,7 @@ typings/
 
 # JetBrain
 .idea
+
+# Deno
+.deno/
+deno.lock

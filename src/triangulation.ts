@@ -138,7 +138,7 @@ function indexesToTri(
   const points_: [Position[], string | number][] = indexes.map(
     (index: number | string) => {
       if (!version || version < 2.00703) index = normalizeNodeKey(index);
-      const point_base = isFinite(index as any)
+      const point_base = isFinite(index as number)
         ? points[index as number]
         : index === "c"
         ? cent
