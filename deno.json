@@ -1,7 +1,7 @@
 {
   "name": "@maplat/transform",
-  "version": "0.2.0",
-  "exports": "./mod.ts",
+  "version": "0.2.1",
+  "exports": "./src/index.ts",
   "tasks": {
     "dev": "deno run --watch src/index.ts",
     "test": "deno test --allow-read tests/transform.deno.test.ts",
@@ -17,7 +17,10 @@
   },
   "compilerOptions": {
     "strict": true,
-    "lib": ["deno.window", "dom"]
+    "lib": [
+      "deno.window",
+      "dom"
+    ]
   },
   "fmt": {
     "lineWidth": 80,
@@ -28,7 +31,9 @@
   },
   "lint": {
     "rules": {
-      "tags": ["recommended"]
+      "tags": [
+        "recommended"
+      ]
     }
   }
 }
