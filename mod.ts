@@ -16,7 +16,7 @@ import { unitCalc, transformArr } from "./src/geometry.ts";
 import type { EdgeSet, EdgeSetLegacy } from "./src/edgeutils.ts";
 
 // Re-export everything from index.ts content
-export { Transform } from "./src/index.ts";
+export { Transform, format_version } from "./src/index.ts";
 export type { 
   Compiled, 
   CompiledLegacy, 
