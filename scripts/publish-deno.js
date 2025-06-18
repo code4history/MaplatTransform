@@ -23,6 +23,8 @@ try {
   
   // No local imports to update for MaplatEdgebound
   
+  // Get command line arguments
+  const args = process.argv.slice(2);
   const isDryRun = args.includes('--dry-run');
   
   // Run deno publish with all passed arguments
