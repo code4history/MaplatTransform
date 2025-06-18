@@ -21,28 +21,16 @@ try {
   console.log('Syncing version across all files...');
   execSync('node scripts/sync-version.js', { stdio: 'inherit', cwd: rootDir });
   
-  // Update imports for production
-  if (denoJson.imports) {
-    const originalImports = { ...denoJson.imports };
-    
-    // Replace local paths with JSR/npm versions
-    if (denoJson.imports['@maplat/edgeruler']) {
-      denoJson.imports['@maplat/edgeruler'] = 'jsr:@maplat/edgeruler@^0.2.1';
-    }
-    
-    fs.writeFileSync(denoJsonPath, JSON.stringify(denoJson, null, 2));
-    console.log('Updated imports in deno.json for production');
-  }
-
+  // No local imports to update for MaplatEdgebound
+  
   // Get command line arguments
   const args = process.argv.slice(2);
   const isDryRun = args.includes('--dry-run');
   
   // Run deno publish with all passed arguments
   // Add --no-check and --allow-slow-types to skip strict type checking for now
-  // Add --allow-dirty for dry-run testing
-  const extraArgs = isDryRun ? '--allow-dirty' : '';
-  const publishCommand = `deno publish --no-check --allow-slow-types ${extraArgs} ${args.join(' ')}`;
+  // Add --allow-dirty since we temporarily modify deno.json
+  const publishCommand = `deno publish --no-check --allow-slow-types --allow-dirty ${args.join(' ')}`;
   console.log(`Running: ${publishCommand}`);
   
   execSync(publishCommand, { stdio: 'inherit' });
