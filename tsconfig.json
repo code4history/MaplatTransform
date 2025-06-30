@@ -30,5 +30,5 @@
     "noEmit": true
   },
   "include": ["src/**/*", "tests/**/*", "types/**/*"],
-  "exclude": ["node_modules", "dist", "tests/transform.deno.test.ts"]
+  "exclude": ["node_modules", "dist"]
 }

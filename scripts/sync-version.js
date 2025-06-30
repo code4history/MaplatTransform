@@ -17,23 +17,10 @@ console.log(`Syncing version ${version} across all files...`);
 // Files to update
 const filesToUpdate = [
   {
-    path: path.join(rootDir, 'deno.json'),
-    type: 'json',
-    field: 'version'
-  },
-  {
-    path: path.join(rootDir, 'jsr.json'),
-    type: 'json',
-    field: 'version'
-  },
-  {
     path: path.join(rootDir, 'README.md'),
     type: 'markdown',
     patterns: [
       { regex: /npm install @maplat\/transform@[\d.]+/g, replacement: `npm install @maplat/transform@${version}` },
-      { regex: /deno add @maplat\/transform@[\d.]+/g, replacement: `deno add @maplat/transform@${version}` },
-      { regex: /npx jsr add @maplat\/transform@[\d.]+/g, replacement: `npx jsr add @maplat/transform@${version}` },
-      { regex: /jsr:@maplat\/transform@[\d.]+/g, replacement: `jsr:@maplat/transform@${version}` },
       { regex: /npm:@maplat\/transform@[\d.]+/g, replacement: `npm:@maplat/transform@${version}` }
     ]
   },
@@ -42,9 +29,6 @@ const filesToUpdate = [
     type: 'markdown',
     patterns: [
       { regex: /npm install @maplat\/transform@[\d.]+/g, replacement: `npm install @maplat/transform@${version}` },
-      { regex: /deno add @maplat\/transform@[\d.]+/g, replacement: `deno add @maplat/transform@${version}` },
-      { regex: /npx jsr add @maplat\/transform@[\d.]+/g, replacement: `npx jsr add @maplat/transform@${version}` },
-      { regex: /jsr:@maplat\/transform@[\d.]+/g, replacement: `jsr:@maplat/transform@${version}` },
       { regex: /npm:@maplat\/transform@[\d.]+/g, replacement: `npm:@maplat/transform@${version}` }
     ]
   }

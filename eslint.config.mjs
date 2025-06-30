@@ -1,13 +1,10 @@
 // @ts-nocheck // TypeScriptの型チェックを無効化
 import js from "@eslint/js";
-import * as tseslint from "@typescript-eslint/eslint-plugin";
-import * as tsParser from "@typescript-eslint/parser";
+import tseslint from "@typescript-eslint/eslint-plugin";
+import tsParser from "@typescript-eslint/parser";
 import prettier from "eslint-config-prettier";
 
 const config = [
-  {
-    ignores: ["tests/transform.deno.test.ts"]
-  },
   {
     linterOptions: {
       reportUnusedDisableDirectives: true,
@@ -34,11 +31,12 @@ const config = [
       "@typescript-eslint": tseslint
     },
     rules: {
+      ...tseslint.configs.recommended.rules,
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-unused-vars": ["warn", { 
         "argsIgnorePattern": "^_",
         "varsIgnorePattern": "^_",
-        "caughtErrorsIgnorePattern": "^_" // catch節の変数も_で始まる場合は無視
+        "caughtErrorsIgnorePattern": "^_"
       }],
       "@typescript-eslint/explicit-module-boundary-types": "off",
       "no-case-declarations": "off",
@@ -49,7 +47,7 @@ const config = [
   prettier,
 
   {
-    ignores: ["dist/**", "node_modules/**", "*.js", "tests/transform.deno.test.ts"],
+    ignores: ["dist/**", "node_modules/**", "*.js"],
     languageOptions: {
       sourceType: "module",
       globals: {
