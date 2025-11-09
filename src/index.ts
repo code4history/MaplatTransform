@@ -1,110 +1,55 @@
+import type { Feature, Polygon, Position } from "geojson";
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
-import { featureCollection, point } from "@turf/helpers";
+import { point } from "@turf/helpers";
 import { getCoords } from "@turf/invariant";
-import { indexesToTri, normalizeNodeKey } from "./triangulation.ts";
-import type { Feature, Polygon, Position, Point, FeatureCollection } from "geojson";
-import { normalizeEdges } from "./edgeutils.ts";
-import type { 
-  WeightBuffer, Tins, VerticesParams, PropertyTriKey, 
-  IndexedTins, Tri
-} from "./geometry.ts";
 import { unitCalc, transformArr } from "./geometry.ts";
-import type { EdgeSet, EdgeSetLegacy } from "./edgeutils.ts";
-export type { Tins, Tri, PropertyTriKey } from './geometry.ts';
-export { transformArr } from './geometry.ts';
-export { rotateVerticesTriangle, counterTri } from './triangulation.ts';
-export type { Edge, EdgeSet, EdgeSetLegacy } from './edgeutils.ts';
-export { normalizeEdges } from './edgeutils.ts';
-
-/**
- * 座標ペアの型定義。[ソース座標, ターゲット座標] の形式
- */
-export type PointSet = [Position, Position];
-
-/**
- * 変換の方向を示す型定義
- * - forw: 順方向（ソース → ターゲット）
- * - bakw: 逆方向（ターゲット → ソース）
- */
-export type BiDirectionKey = "forw" | "bakw";
-
-/**
- * 両方向の重み付けバッファの型定義
- */
-export type WeightBufferBD = { [key in BiDirectionKey]?: WeightBuffer };
-
-/**
- * 頂点モードの型定義
- * - plain: 通常モード
- * - birdeye: 鳥瞰図モード
- */
-export type VertexMode = "plain" | "birdeye";
-
-/**
- * 厳密性モードの型定義
- * - strict: 厳密モード（交差なしを保証）
- * - auto: 自動モード（可能な限り厳密に）
- * - loose: 緩和モード（交差を許容）
- */
-export type StrictMode = "strict" | "auto" | "loose";
-
-/**
- * 厳密性モードの生成結果
- * - strict: 厳密モード生成成功
- * - auto: 厳密モードでエラー
- * - loose: 緩和モード
- */
-export type StrictStatus = "strict" | "strict_error" | "loose";
-
-/**
- * Y軸の向きの型定義
- * - follow: Y軸の向きを維持
- * - invert: Y軸の向きを反転
- */
-export type YaxisMode = "follow" | "invert";
-export type Centroid = Feature<Point>;
-export type CentroidBD = { [key in BiDirectionKey]?: Centroid };
-export type TinsBD = { [key in BiDirectionKey]?: Tins };
-export type Kinks = FeatureCollection<Point>;
-export type KinksBD = { [key in BiDirectionKey]?: Kinks };
-export type VerticesParamsBD = { [key in BiDirectionKey]?: VerticesParams };
-export type IndexedTinsBD = { [key in BiDirectionKey]?: IndexedTins };
-
-export const format_version = 2.00703; //(Version 2 format for library version 0.7.3)
-
-/**
- * コンパイルされた設定の型定義
- * 変換に必要な全ての情報を含む
- */
-export interface Compiled {
-  version?: number;
-  points: PointSet[];
-  tins_points: (number | string)[][][];
-  weight_buffer: WeightBufferBD;
-  strict_status?: StrictStatus;
-  centroid_point: Position[];
-  edgeNodes?: PointSet[];
-  kinks_points?: Position[];
-  yaxisMode?: YaxisMode;
-  vertexMode?: VertexMode;
-  strictMode?: StrictMode;
-  vertices_params: number[][];
-  vertices_points: PointSet[];
-  edges: EdgeSet[];
-  bounds?: number[][];
-  boundsPolygon?: Feature<Polygon>;
-  wh?: number[];
-  xy?: number[];
-}
-
-// For old Interface
-export interface CompiledLegacy extends Compiled {
-  tins?: TinsBD;
-  centroid?: CentroidBD;
-  kinks?: KinksBD;
-  vertices_params: number[][] & VerticesParamsBD;
-  edges: EdgeSet[] & EdgeSetLegacy[];
-}
+import type { Tri } from "./geometry.ts";
+import {
+  FORMAT_VERSION,
+  isModernCompiled,
+  restoreLegacyState,
+  restoreModernState
+} from "./compiled-state.ts";
+import type { EdgeSet } from "./edgeutils.ts";
+import type {
+  Compiled,
+  CompiledLegacy,
+  IndexedTinsBD,
+  KinksBD,
+  LegacyStatePayload,
+  ModernStatePayload,
+  PointSet,
+  StrictMode,
+  StrictStatus,
+  TinsBD,
+  VertexMode,
+  VerticesParamsBD,
+  WeightBufferBD,
+  YaxisMode,
+  CentroidBD
+} from "./types.ts";
+export type {
+  PointSet,
+  BiDirectionKey,
+  WeightBufferBD,
+  VertexMode,
+  StrictMode,
+  StrictStatus,
+  YaxisMode,
+  CentroidBD,
+  TinsBD,
+  KinksBD,
+  VerticesParamsBD,
+  IndexedTinsBD,
+  Compiled,
+  CompiledLegacy
+} from "./types.ts";
+export type { Tins, Tri, PropertyTriKey } from "./geometry.ts";
+export { transformArr } from "./geometry.ts";
+export { rotateVerticesTriangle, counterTri } from "./triangulation.ts";
+export type { Edge, EdgeSet, EdgeSetLegacy } from "./edgeutils.ts";
+export { normalizeEdges } from "./edgeutils.ts";
+export const format_version = FORMAT_VERSION;
 
 /**
  * 座標変換の基本機能を提供するクラス
@@ -165,179 +110,49 @@ export class Transform {
    * 4. インデックスの作成
    */
   setCompiled(compiled: Compiled | CompiledLegacy): void {
-    if (
-      compiled.version ||
-      (!(compiled as CompiledLegacy).tins && compiled.points && compiled.tins_points)
-    ) {
-      // 新コンパイルロジック
-      // pointsはそのままpoints
-      this.points = compiled.points;
-      // After 0.7.3 Normalizing old formats for weightBuffer
-      this.pointsWeightBuffer =
-      !compiled.version || compiled.version < 2.00703
-        ? (["forw", "bakw"] as BiDirectionKey[]).reduce((bd, forb) => {
-          const base = compiled.weight_buffer[forb];
-          if (base) {
-          bd[forb] = Object.keys(base!).reduce((buffer, key) => {
-            const normKey = normalizeNodeKey(key);
-            buffer[normKey] = base![key];
-            return buffer;
-          }, {} as WeightBuffer);
-          }
-          return bd;
-        }, {} as WeightBufferBD)
-        : compiled.weight_buffer;
-      // kinksやtinsの存在状況でstrict_statusを判定
-      if (compiled.strict_status) {
-      this.strict_status = compiled.strict_status;
-      } else if (compiled.kinks_points) {
-      this.strict_status = Transform.STATUS_ERROR;
-      } else if (compiled.tins_points.length == 2) {
-      this.strict_status = Transform.STATUS_LOOSE;
-      } else {
-      this.strict_status = Transform.STATUS_STRICT;
-      }
-      // vertices_paramsを復元
-      this.vertices_params = {
-      forw: [(compiled.vertices_params as number[][])[0]],
-      bakw: [(compiled.vertices_params as number[][])[1]]
-      };
-      this.vertices_params.forw![1] = [0, 1, 2, 3].map(idx => {
-      const idxNxt = (idx + 1) % 4;
-      const tri = indexesToTri(
-        ["c", `b${idx}`, `b${idxNxt}`],
-        compiled.points,
-        compiled.edgeNodes || [],
-        compiled.centroid_point,
-        compiled.vertices_points,
-        false,
-        format_version
-      );
-      return featureCollection([tri]);
-      });
-      this.vertices_params.bakw![1] = [0, 1, 2, 3].map(idx => {
-      const idxNxt = (idx + 1) % 4;
-      const tri = indexesToTri(
-        ["c", `b${idx}`, `b${idxNxt}`],
-        compiled.points,
-        compiled.edgeNodes || [],
-        compiled.centroid_point,
-        compiled.vertices_points,
-        true,
-        format_version
-      );
-      return featureCollection([tri]);
-      });
-      // centroidを復元
-      this.centroid = {
-      forw: point(compiled.centroid_point[0], {
-        target: {
-        geom: compiled.centroid_point[1],
-        index: "c"
-        }
-      }),
-      bakw: point(compiled.centroid_point[1], {
-        target: {
-        geom: compiled.centroid_point[0],
-        index: "c"
-        }
-      })
-      };
-      // edgesを復元
-      this.edges = normalizeEdges(compiled.edges || []);
-      this.edgeNodes = compiled.edgeNodes || [];
-      // tinsを復元
-      const bakwI = compiled.tins_points.length == 1 ? 0 : 1;
-      this.tins = {
-      forw: featureCollection(
-        compiled.tins_points[0].map((idxes: (number | string)[]) =>
-        indexesToTri(
-          idxes,
-          compiled.points,
-          compiled.edgeNodes || [],
-          compiled.centroid_point,
-          compiled.vertices_points,
-          false,
-          compiled.version
-        )
-        )
-      ),
-      bakw: featureCollection(
-        compiled.tins_points[bakwI].map((idxes: (number | string)[]) =>
-        indexesToTri(
-          idxes,
-          compiled.points,
-          compiled.edgeNodes || [],
-          compiled.centroid_point,
-          compiled.vertices_points,
-          true,
-          compiled.version
-        )
-        )
-      )
-      };
-      this.addIndexedTin();
-      // kinksを復元
-      if (compiled.kinks_points) {
-      this.kinks = {
-        bakw: featureCollection(
-        compiled.kinks_points.map((coord: Position) => point(coord))
-        )
-      };
-      }
-      // yaxisModeを復元
-      if (compiled.yaxisMode) {
-        this.yaxisMode = compiled.yaxisMode;
-      } else {
-        this.yaxisMode = Transform.YAXIS_INVERT;
-      }
-      // After 0.7.3: Restore strict_mode & vertex_mode
-      if (compiled.vertexMode) {
-        this.vertexMode = compiled.vertexMode;
-      }
-      if (compiled.strictMode) {
-        this.strictMode = compiled.strictMode;
-      }
-      // boundsを復元
-      if (compiled.bounds) {
-      this.bounds = compiled.bounds;
-      this.boundsPolygon = compiled.boundsPolygon;
-      this.xy = compiled.xy;
-      this.wh = compiled.wh;
-      } else {
-      this.xy = [0, 0];
-      if (compiled.wh) this.wh = compiled.wh;
+    if (isModernCompiled(compiled)) {
+      this.applyModernState(restoreModernState(compiled));
+      return;
+    }
+    this.applyLegacyState(restoreLegacyState(compiled as CompiledLegacy));
+  }
+
+  private applyModernState(state: ModernStatePayload): void {
+    this.points = state.points;
+    this.pointsWeightBuffer = state.pointsWeightBuffer;
+    this.strict_status = state.strictStatus;
+    this.vertices_params = state.verticesParams;
+    this.centroid = state.centroid;
+    this.edges = state.edges;
+    this.edgeNodes = state.edgeNodes || [];
+    this.tins = state.tins;
+    this.addIndexedTin();
+    this.kinks = state.kinks;
+    this.yaxisMode = state.yaxisMode ?? Transform.YAXIS_INVERT;
+    this.vertexMode = state.vertexMode ?? Transform.VERTEX_PLAIN;
+    this.strictMode = state.strictMode ?? Transform.MODE_AUTO;
+    if (state.bounds) {
+      this.bounds = state.bounds;
+      this.boundsPolygon = state.boundsPolygon;
+      this.xy = state.xy;
+      this.wh = state.wh;
+    } else {
       this.bounds = undefined;
       this.boundsPolygon = undefined;
-      }
-    } else {
-      // 旧コンパイルロジック
-      compiled = JSON.parse(
-      JSON.stringify(compiled)
-        .replace('"cent"', '"c"')
-        .replace(/"bbox(\d+)"/g, '"b$1"')
-      );
-      this.tins = (compiled as CompiledLegacy).tins;
-      this.addIndexedTin();
-      this.strict_status = compiled.strict_status;
-      this.pointsWeightBuffer = compiled.weight_buffer;
-      this.vertices_params = compiled.vertices_params as VerticesParamsBD;
-      this.centroid = (compiled as CompiledLegacy).centroid;
-      this.kinks = (compiled as CompiledLegacy).kinks;
-      const points: PointSet[] = [];
-      for (let i = 0; i < this.tins!.forw!.features.length; i++) {
-      const tri = this.tins!.forw!.features[i];
-      (["a", "b", "c"] as PropertyTriKey[]).map((key, idx) => {
-        const forw = tri.geometry!.coordinates[0][idx];
-        const bakw = tri.properties![key].geom;
-        const pIdx = tri.properties![key].index;
-        if (typeof pIdx === 'number') {
-          points[pIdx] = [forw, bakw];
-        }
-      });
-      }
-      this.points = points;
+      this.xy = state.xy ?? [0, 0];
+      if (state.wh) this.wh = state.wh;
     }
+  }
+
+  private applyLegacyState(state: LegacyStatePayload): void {
+    this.tins = state.tins;
+    this.addIndexedTin();
+    this.strict_status = state.strictStatus;
+    this.pointsWeightBuffer = state.pointsWeightBuffer;
+    this.vertices_params = state.verticesParams;
+    this.centroid = state.centroid;
+    this.kinks = state.kinks;
+    this.points = state.points;
   }
 
   /**

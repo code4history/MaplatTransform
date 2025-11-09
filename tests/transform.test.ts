@@ -29,7 +29,6 @@ describe('Transform', () => {
 
       const tin = new Transform();
       tin.setCompiled(load_c.compiled);
-      console.log(`Compiled: ${load_c.compiled}`);
 
       describe(`Forward transformation`, () => {
         let i = 0;

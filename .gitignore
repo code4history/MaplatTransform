@@ -31,7 +31,6 @@ bower_components
 
 # Compiled binary addons (https://nodejs.org/api/addons.html)
 build/Release
-dist
 
 # Dependency directories
 node_modules/
@@ -64,9 +63,13 @@ typings/
 # JetBrain
 .idea
 
-# Deno
-.deno/
+# Deno build output
+npm/
 deno.lock
+
+# yalc
+.yalc
+yalc.lock
 
 #Claude recommendation
 *_shouldChange.md
