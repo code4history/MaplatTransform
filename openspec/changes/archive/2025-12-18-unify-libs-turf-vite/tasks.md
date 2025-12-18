@@ -1,0 +1,5 @@
+- [ ] Analyze current Turf.js usage and imports <!-- id: 0 -->
+- [ ] Standardize Turf dependencies (Decide: Granular vs Monolithic) <!-- id: 1 -->
+- [ ] Review and standardize `vite.config.ts` <!-- id: 2 -->
+- [ ] Review and standardize `eslint.config.mjs` <!-- id: 3 -->
+- [ ] Verify build and tests pass with new configurations <!-- id: 4 -->

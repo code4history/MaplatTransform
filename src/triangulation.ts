@@ -1,4 +1,4 @@
-import { polygon } from "@turf/helpers";
+import { polygon } from "@turf/turf";
 import type { Position } from "geojson";
 import { PropertyTriKey, Tri, Tins } from "./geometry.ts";
 
@@ -141,23 +141,23 @@ function indexesToTri(
       const point_base = isFinite(index as number)
         ? points[index as number]
         : index === "c"
-        ? cent
-        : index === "b0"
-        ? bboxes[0]
-        : index === "b1"
-        ? bboxes[1]
-        : index === "b2"
-        ? bboxes[2]
-        : index === "b3"
-        ? bboxes[3]
-        : (function () {
-            const match = (index as string).match(/e(\d+)/);
-            if (match) {
-              const nodeIndex = parseInt(match[1]);
-              return edgeNodes[nodeIndex];
-            }
-            throw "Bad index value for indexesToTri";
-          })();
+          ? cent
+          : index === "b0"
+            ? bboxes[0]
+            : index === "b1"
+              ? bboxes[1]
+              : index === "b2"
+                ? bboxes[2]
+                : index === "b3"
+                  ? bboxes[3]
+                  : (function () {
+                    const match = (index as string).match(/e(\d+)/);
+                    if (match) {
+                      const nodeIndex = parseInt(match[1]);
+                      return edgeNodes[nodeIndex];
+                    }
+                    throw "Bad index value for indexesToTri";
+                  })();
       return bakw
         ? [[point_base![1], point_base![0]], index]
         : [[point_base![0], point_base![1]], index];
@@ -172,7 +172,7 @@ function normalizeNodeKey(index: number | string) {
   return index.replace(/^(c|e|b)(?:ent|dgeNode|box)(\d+)?$/, "$1$2");
 }
 
-export { 
+export {
   rotateVerticesTriangle,
   counterTri,
   indexesToTri,

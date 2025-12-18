@@ -1,5 +1,4 @@
-import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
-import { featureCollection } from "@turf/helpers";
+import { booleanPointInPolygon, featureCollection } from "@turf/turf";
 import type { Feature, FeatureCollection, Polygon, Point, Position } from "geojson";
 //import { Tri, Tins, IndexedTins, WeightBuffer, VerticesParams } from "./index";
 type PropertyTri = { geom: Position; index: number | string };
@@ -230,20 +229,20 @@ function decideUseVertex(radian: number, radianList: number[]): number | undefin
 * normalizeRadian(3 * Math.PI, true); // returns π
 */
 function normalizeRadian(target: number, noNegative = false): number {
- // 正規化の範囲を決定する関数
- const rangeFunc = noNegative
-   ? function (val: number) {
-       return !(val >= 0 && val < Math.PI * 2);  // [0, 2π)の範囲外
-     }
-   : function (val: number) {
-       return !(val > -1 * Math.PI && val <= Math.PI);  // (-π, π]の範囲外
-     };
+  // 正規化の範囲を決定する関数
+  const rangeFunc = noNegative
+    ? function (val: number) {
+      return !(val >= 0 && val < Math.PI * 2);  // [0, 2π)の範囲外
+    }
+    : function (val: number) {
+      return !(val > -1 * Math.PI && val <= Math.PI);  // (-π, π]の範囲外
+    };
 
- // 範囲内に収まるまで2πを加減算
- while (rangeFunc(target)) {
-   target = target + 2 * Math.PI * (target > 0 ? -1 : 1);
- }
- return target;
+  // 範囲内に収まるまで2πを加減算
+  while (rangeFunc(target)) {
+    target = target + 2 * Math.PI * (target > 0 ? -1 : 1);
+  }
+  return target;
 }
 
 export { transformArr, unitCalc };

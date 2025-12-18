@@ -1,7 +1,5 @@
 import type { Feature, Polygon, Position } from "geojson";
-import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
-import { point } from "@turf/helpers";
-import { getCoords } from "@turf/invariant";
+import { booleanPointInPolygon, point, getCoords } from "@turf/turf";
 import { unitCalc, transformArr } from "./geometry.ts";
 import type { Tri } from "./geometry.ts";
 import {
@@ -95,7 +93,7 @@ export class Transform {
   stateTriangle?: Tri;
   stateBackward?: boolean;
 
-  constructor() {}
+  constructor() { }
 
   /**
    * コンパイルされた設定を適用します

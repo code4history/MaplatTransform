@@ -1,4 +1,4 @@
-import { featureCollection, point } from "@turf/helpers";
+import { featureCollection, point } from "@turf/turf";
 import type { Position } from "geojson";
 import { normalizeEdges } from "./edgeutils.ts";
 import { indexesToTri, normalizeNodeKey } from "./triangulation.ts";
@@ -27,7 +27,7 @@ export function isModernCompiled(
 ): compiled is Compiled {
   return Boolean(
     compiled.version ||
-      (!(compiled as CompiledLegacy).tins && compiled.points && compiled.tins_points)
+    (!(compiled as CompiledLegacy).tins && compiled.points && compiled.tins_points)
   );
 }
 
