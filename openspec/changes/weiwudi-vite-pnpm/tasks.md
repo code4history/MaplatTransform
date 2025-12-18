@@ -1,0 +1,11 @@
+- [x] Remove `package-lock.json` and run `pnpm install` <!-- id: 0 -->
+- [x] Update `package.json` scripts to remove npm-isms if any (or verify compatibility) <!-- id: 1 -->
+- [x] Verify local build and test with `pnpm` <!-- id: 2 -->
+    - [x] `pnpm run lint` <!-- id: 3 -->
+    - [x] `pnpm run typecheck` <!-- id: 4 -->
+    - [x] `pnpm run test` <!-- id: 5 -->
+    - [x] `pnpm run build` <!-- id: 6 -->
+- [x] Update `.github/workflows/test.yml` <!-- id: 7 -->
+    - [x] Use `pnpm/action-setup` <!-- id: 8 -->
+    - [x] Configure cache <!-- id: 9 -->
+    - [x] Update steps to run `pnpm install` and `pnpm run ...` <!-- id: 10 -->
