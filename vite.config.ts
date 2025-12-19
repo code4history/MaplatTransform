@@ -25,13 +25,18 @@ const removeTsExtensions = () => {
 
 export default defineConfig({
   base: './',
+  server: {
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8'
+    }
+  },
   build: isPackageBuild ? {
     lib: {
       entry: resolve(__dirname, 'src/index.ts'),
       formats: ['es', 'cjs', 'umd'],
       name: 'maplat_transform',
       fileName: (format, entryName) => {
-        switch(format) {
+        switch (format) {
           case 'es':
             return 'maplat_transform.js';
           case 'cjs':
