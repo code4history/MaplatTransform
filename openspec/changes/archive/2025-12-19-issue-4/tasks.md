@@ -1,0 +1,4 @@
+- [x] Review current `package.json` type definitions setup <!-- id: 0 -->
+- [x] Ensure `exports` field has proper `types` mappings <!-- id: 1 -->
+- [x] Verify type generation with `vite-plugin-dts` <!-- id: 2 -->
+- [x] Test type imports in a sample consuming project <!-- id: 3 -->
