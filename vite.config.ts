@@ -25,11 +25,6 @@ const removeTsExtensions = () => {
 
 export default defineConfig({
   base: './',
-  server: {
-    headers: {
-      'Content-Type': 'text/html; charset=utf-8'
-    }
-  },
   build: isPackageBuild ? {
     lib: {
       entry: resolve(__dirname, 'src/index.ts'),
