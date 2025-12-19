@@ -10,7 +10,7 @@ const isPackageBuild = process.env.BUILD_MODE === 'package';
 const removeTsExtensions = () => {
   return {
     name: 'remove-ts-extensions',
-    transform(code, id) {
+    transform(code: string, id: string) {
       if (id.endsWith('.ts') || id.endsWith('.tsx')) {
         // Replace imports with .ts extensions
         return code.replace(
