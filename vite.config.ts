@@ -26,16 +26,17 @@ const removeTsExtensions = () => {
 export default defineConfig({
   base: './',
   build: isPackageBuild ? {
+    outDir: 'dist',
+    emptyOutDir: true,
+    copyPublicDir: false,
     lib: {
       entry: resolve(__dirname, 'src/index.ts'),
-      formats: ['es', 'cjs', 'umd'],
+      formats: ['es', 'umd'],
       name: 'maplat_transform',
-      fileName: (format, entryName) => {
+      fileName: (format) => {
         switch (format) {
           case 'es':
             return 'maplat_transform.js';
-          case 'cjs':
-            return 'maplat_transform.cjs';
           case 'umd':
             return 'maplat_transform.umd.js';
           default:
@@ -44,24 +45,19 @@ export default defineConfig({
       }
     }
   } : {
-    outDir: 'dist',
+    outDir: 'dist-demo',
     emptyOutDir: true,
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html')
-      },
-      output: {
-        entryFileNames: 'assets/[name].[hash].js',
-        chunkFileNames: 'assets/[name].[hash].js',
-        assetFileNames: 'assets/[name].[hash][extname]'
       }
     }
   },
   plugins: [
     removeTsExtensions(),
     dts({
-      outDir: 'dist',
-      exclude: ['tests'],
+      outDir: isPackageBuild ? 'dist' : 'dist-demo',
+      exclude: ['tests', 'public'],
       rollupTypes: true,
       tsconfigPath: './tsconfig.json',
       logLevel: 'silent'

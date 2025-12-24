@@ -308,14 +308,14 @@ function $(t, e, r, n, c, i = !1, f) {
   const g = t.map(
     (h) => {
       (!f || f < 2.00703) && (h = nt(h));
-      const l = isFinite(h) ? e[h] : h === "c" ? n : h === "b0" ? c[0] : h === "b1" ? c[1] : h === "b2" ? c[2] : h === "b3" ? c[3] : function() {
+      const l = isFinite(h) ? e[h] : h === "c" ? n : h === "b0" ? c[0] : h === "b1" ? c[1] : h === "b2" ? c[2] : h === "b3" ? c[3] : (function() {
         const y = h.match(/e(\d+)/);
         if (y) {
           const o = parseInt(y[1]);
           return r[o];
         }
         throw "Bad index value for indexesToTri";
-      }();
+      })();
       return i ? [[l[1], l[0]], h] : [[l[0], l[1]], h];
     }
   );
