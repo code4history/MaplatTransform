@@ -1,6 +1,6 @@
 var at = Object.defineProperty;
 var ct = (t, e, r) => e in t ? at(t, e, { enumerable: !0, configurable: !0, writable: !0, value: r }) : t[e] = r;
-var p = (t, e, r) => ct(t, typeof e != "symbol" ? e + "" : e, r);
+var x = (t, e, r) => ct(t, typeof e != "symbol" ? e + "" : e, r);
 function tt(t, e, r = {}) {
   const n = { type: "Feature" };
   return (r.id === 0 || r.id) && (n.id = r.id), r.bbox && (n.bbox = r.bbox), n.properties = e || {}, n.geometry = t, n;
@@ -95,16 +95,16 @@ function Y(t) {
 }
 const gt = (3 + 16 * R) * R, lt = (2 + 12 * R) * R, yt = (9 + 64 * R) * R * R, U = Y(4), G = Y(8), j = Y(12), J = Y(16), S = Y(4);
 function bt(t, e, r, n, c, i, f) {
-  let g, h, l, y, o, u, b, x, d, a, s, m, v, M, _, w, A, P;
+  let g, h, l, y, o, u, b, p, d, a, s, m, v, M, _, w, A, P;
   const k = t - c, I = r - c, T = e - i, N = n - i;
-  M = k * N, u = O * k, b = u - (u - k), x = k - b, u = O * N, d = u - (u - N), a = N - d, _ = x * a - (M - b * d - x * d - b * a), w = T * I, u = O * T, b = u - (u - T), x = T - b, u = O * I, d = u - (u - I), a = I - d, A = x * a - (w - b * d - x * d - b * a), s = _ - A, o = _ - s, U[0] = _ - (s + o) + (o - A), m = M + s, o = m - M, v = M - (m - o) + (s - o), s = v - w, o = v - s, U[1] = v - (s + o) + (o - w), P = m + s, o = P - m, U[2] = m - (P - o) + (s - o), U[3] = P;
+  M = k * N, u = O * k, b = u - (u - k), p = k - b, u = O * N, d = u - (u - N), a = N - d, _ = p * a - (M - b * d - p * d - b * a), w = T * I, u = O * T, b = u - (u - T), p = T - b, u = O * I, d = u - (u - I), a = I - d, A = p * a - (w - b * d - p * d - b * a), s = _ - A, o = _ - s, U[0] = _ - (s + o) + (o - A), m = M + s, o = m - M, v = M - (m - o) + (s - o), s = v - w, o = v - s, U[1] = v - (s + o) + (o - w), P = m + s, o = P - m, U[2] = m - (P - o) + (s - o), U[3] = P;
   let C = ht(4, U), X = lt * f;
   if (C >= X || -C >= X || (o = t - k, g = t - (k + o) + (o - c), o = r - I, l = r - (I + o) + (o - c), o = e - T, h = e - (T + o) + (o - i), o = n - N, y = n - (N + o) + (o - i), g === 0 && h === 0 && l === 0 && y === 0) || (X = yt * f + dt * Math.abs(C), C += k * y + N * g - (T * l + I * h), C >= X || -C >= X)) return C;
-  M = g * N, u = O * g, b = u - (u - g), x = g - b, u = O * N, d = u - (u - N), a = N - d, _ = x * a - (M - b * d - x * d - b * a), w = h * I, u = O * h, b = u - (u - h), x = h - b, u = O * I, d = u - (u - I), a = I - d, A = x * a - (w - b * d - x * d - b * a), s = _ - A, o = _ - s, S[0] = _ - (s + o) + (o - A), m = M + s, o = m - M, v = M - (m - o) + (s - o), s = v - w, o = v - s, S[1] = v - (s + o) + (o - w), P = m + s, o = P - m, S[2] = m - (P - o) + (s - o), S[3] = P;
+  M = g * N, u = O * g, b = u - (u - g), p = g - b, u = O * N, d = u - (u - N), a = N - d, _ = p * a - (M - b * d - p * d - b * a), w = h * I, u = O * h, b = u - (u - h), p = h - b, u = O * I, d = u - (u - I), a = I - d, A = p * a - (w - b * d - p * d - b * a), s = _ - A, o = _ - s, S[0] = _ - (s + o) + (o - A), m = M + s, o = m - M, v = M - (m - o) + (s - o), s = v - w, o = v - s, S[1] = v - (s + o) + (o - w), P = m + s, o = P - m, S[2] = m - (P - o) + (s - o), S[3] = P;
   const it = V(4, U, 4, S, G);
-  M = k * y, u = O * k, b = u - (u - k), x = k - b, u = O * y, d = u - (u - y), a = y - d, _ = x * a - (M - b * d - x * d - b * a), w = T * l, u = O * T, b = u - (u - T), x = T - b, u = O * l, d = u - (u - l), a = l - d, A = x * a - (w - b * d - x * d - b * a), s = _ - A, o = _ - s, S[0] = _ - (s + o) + (o - A), m = M + s, o = m - M, v = M - (m - o) + (s - o), s = v - w, o = v - s, S[1] = v - (s + o) + (o - w), P = m + s, o = P - m, S[2] = m - (P - o) + (s - o), S[3] = P;
+  M = k * y, u = O * k, b = u - (u - k), p = k - b, u = O * y, d = u - (u - y), a = y - d, _ = p * a - (M - b * d - p * d - b * a), w = T * l, u = O * T, b = u - (u - T), p = T - b, u = O * l, d = u - (u - l), a = l - d, A = p * a - (w - b * d - p * d - b * a), s = _ - A, o = _ - s, S[0] = _ - (s + o) + (o - A), m = M + s, o = m - M, v = M - (m - o) + (s - o), s = v - w, o = v - s, S[1] = v - (s + o) + (o - w), P = m + s, o = P - m, S[2] = m - (P - o) + (s - o), S[3] = P;
   const st = V(it, G, 4, S, j);
-  M = g * y, u = O * g, b = u - (u - g), x = g - b, u = O * y, d = u - (u - y), a = y - d, _ = x * a - (M - b * d - x * d - b * a), w = h * l, u = O * h, b = u - (u - h), x = h - b, u = O * l, d = u - (u - l), a = l - d, A = x * a - (w - b * d - x * d - b * a), s = _ - A, o = _ - s, S[0] = _ - (s + o) + (o - A), m = M + s, o = m - M, v = M - (m - o) + (s - o), s = v - w, o = v - s, S[1] = v - (s + o) + (o - w), P = m + s, o = P - m, S[2] = m - (P - o) + (s - o), S[3] = P;
+  M = g * y, u = O * g, b = u - (u - g), p = g - b, u = O * y, d = u - (u - y), a = y - d, _ = p * a - (M - b * d - p * d - b * a), w = h * l, u = O * h, b = u - (u - h), p = h - b, u = O * l, d = u - (u - l), a = l - d, A = p * a - (w - b * d - p * d - b * a), s = _ - A, o = _ - s, S[0] = _ - (s + o) + (o - A), m = M + s, o = m - M, v = M - (m - o) + (s - o), s = v - w, o = v - s, S[1] = v - (s + o) + (o - w), P = m + s, o = P - m, S[2] = m - (P - o) + (s - o), S[3] = P;
   const ot = V(st, j, 4, S, J);
   return J[ot - 1];
 }
@@ -113,8 +113,8 @@ function mt(t, e, r, n, c, i) {
   return Math.abs(h) >= gt * l ? h : -bt(t, e, r, n, c, i, l);
 }
 function wt(t, e) {
-  var r, n, c = 0, i, f, g, h, l, y, o, u = t[0], b = t[1], x = e.length;
-  for (r = 0; r < x; r++) {
+  var r, n, c = 0, i, f, g, h, l, y, o, u = t[0], b = t[1], p = e.length;
+  for (r = 0; r < p; r++) {
     n = 0;
     var d = e[r], a = d.length - 1;
     if (y = d[0], y[0] !== d[a][0] && y[1] !== d[a][1])
@@ -160,7 +160,7 @@ function K(t, e) {
       return e.features[r];
 }
 function rt(t, e, r) {
-  const n = e.geometry.coordinates[0][0], c = e.geometry.coordinates[0][1], i = e.geometry.coordinates[0][2], f = t.geometry.coordinates, g = e.properties.a.geom, h = e.properties.b.geom, l = e.properties.c.geom, y = [c[0] - n[0], c[1] - n[1]], o = [i[0] - n[0], i[1] - n[1]], u = [f[0] - n[0], f[1] - n[1]], b = [h[0] - g[0], h[1] - g[1]], x = [l[0] - g[0], l[1] - g[1]];
+  const n = e.geometry.coordinates[0][0], c = e.geometry.coordinates[0][1], i = e.geometry.coordinates[0][2], f = t.geometry.coordinates, g = e.properties.a.geom, h = e.properties.b.geom, l = e.properties.c.geom, y = [c[0] - n[0], c[1] - n[1]], o = [i[0] - n[0], i[1] - n[1]], u = [f[0] - n[0], f[1] - n[1]], b = [h[0] - g[0], h[1] - g[1]], p = [l[0] - g[0], l[1] - g[1]];
   let d = (o[1] * u[0] - o[0] * u[1]) / (y[0] * o[1] - y[1] * o[0]), a = (y[0] * u[1] - y[1] * u[0]) / (y[0] * o[1] - y[1] * o[0]);
   if (r) {
     const s = r[e.properties.a.index], m = r[e.properties.b.index], v = r[e.properties.c.index];
@@ -173,8 +173,8 @@ function rt(t, e, r) {
     d = M;
   }
   return [
-    d * b[0] + a * x[0] + g[0],
-    d * b[1] + a * x[1] + g[1]
+    d * b[0] + a * p[0] + g[0],
+    d * b[1] + a * p[1] + g[1]
   ];
 }
 function pt(t, e, r, n) {
@@ -188,7 +188,7 @@ function vt(t, e, r, n, c, i, f, g) {
   let h;
   if (f && (h = K(t, F([f]))), !h) {
     if (r) {
-      const l = t.geometry.coordinates, y = r.gridNum, o = r.xOrigin, u = r.yOrigin, b = r.xUnit, x = r.yUnit, d = r.gridCache, a = B(l[0], o, b, y), s = B(l[1], u, x, y), m = d[a] ? d[a][s] ? d[a][s] : [] : [];
+      const l = t.geometry.coordinates, y = r.gridNum, o = r.xOrigin, u = r.yOrigin, b = r.xUnit, p = r.yUnit, d = r.gridCache, a = B(l[0], o, b, y), s = B(l[1], u, p, y), m = d[a] ? d[a][s] ? d[a][s] : [] : [];
       e = F(m.map((v) => e.features[v]));
     }
     h = K(t, e);
@@ -467,26 +467,39 @@ function Rt(t) {
 }
 const Wt = D, E = class E {
   constructor() {
-    p(this, "points", []);
-    p(this, "pointsWeightBuffer");
-    p(this, "strict_status");
-    p(this, "vertices_params");
-    p(this, "centroid");
-    p(this, "edgeNodes");
-    p(this, "edges");
-    p(this, "tins");
-    p(this, "kinks");
-    p(this, "yaxisMode", E.YAXIS_INVERT);
-    p(this, "strictMode", E.MODE_AUTO);
-    p(this, "vertexMode", E.VERTEX_PLAIN);
-    p(this, "bounds");
-    p(this, "boundsPolygon");
-    p(this, "wh");
-    p(this, "xy");
-    p(this, "indexedTins");
-    p(this, "stateFull", !1);
-    p(this, "stateTriangle");
-    p(this, "stateBackward");
+    x(this, "points", []);
+    x(this, "pointsWeightBuffer");
+    x(this, "strict_status");
+    x(this, "vertices_params");
+    x(this, "centroid");
+    x(this, "edgeNodes");
+    x(this, "edges");
+    x(this, "tins");
+    x(this, "kinks");
+    x(this, "yaxisMode", E.YAXIS_INVERT);
+    x(this, "strictMode", E.MODE_AUTO);
+    x(this, "vertexMode", E.VERTEX_PLAIN);
+    x(this, "bounds");
+    x(this, "boundsPolygon");
+    x(this, "wh");
+    x(this, "xy");
+    x(this, "indexedTins");
+    x(this, "stateFull", !1);
+    x(this, "stateTriangle");
+    x(this, "stateBackward");
+    /**
+     * Optional properties for MaplatCore extension
+     * These properties allow consuming applications to extend Transform instances
+     * with additional metadata without requiring Module Augmentation
+     */
+    /** Layer priority for rendering order */
+    x(this, "priority");
+    /** Layer importance for display decisions */
+    x(this, "importance");
+    /** Bounds in XY (source) coordinate system */
+    x(this, "xyBounds");
+    /** Bounds in Mercator (Web Mercator) coordinate system */
+    x(this, "mercBounds");
   }
   /**
    * コンパイルされた設定を適用します
@@ -568,7 +581,7 @@ const Wt = D, E = class E {
       return z(d)[0].map((s) => {
         f.length === 0 ? f = [Array.from(s), Array.from(s)] : (s[0] < f[0][0] && (f[0][0] = s[0]), s[0] > f[1][0] && (f[1][0] = s[0]), s[1] < f[0][1] && (f[0][1] = s[1]), s[1] > f[1][1] && (f[1][1] = s[1])), a.length === 0 ? a = [Array.from(s), Array.from(s)] : (s[0] < a[0][0] && (a[0][0] = s[0]), s[0] > a[1][0] && (a[1][0] = s[0]), s[1] < a[0][1] && (a[0][1] = s[1]), s[1] > a[1][1] && (a[1][1] = s[1]));
       }), a;
-    }), u = (f[1][0] - f[0][0]) / c, b = (f[1][1] - f[0][1]) / c, x = o.reduce(
+    }), u = (f[1][0] - f[0][0]) / c, b = (f[1][1] - f[0][1]) / c, p = o.reduce(
       (d, a, s) => {
         const m = B(
           a[0][0],
@@ -615,7 +628,7 @@ const Wt = D, E = class E {
         yOrigin: f[0][1],
         xUnit: u,
         yUnit: b,
-        gridCache: x
+        gridCache: p
       }
     };
   }
@@ -662,7 +675,7 @@ const Wt = D, E = class E {
  * 各種モードの定数定義
  * すべてreadonlyで、型安全性を確保
  */
-p(E, "VERTEX_PLAIN", "plain"), p(E, "VERTEX_BIRDEYE", "birdeye"), p(E, "MODE_STRICT", "strict"), p(E, "MODE_AUTO", "auto"), p(E, "MODE_LOOSE", "loose"), p(E, "STATUS_STRICT", "strict"), p(E, "STATUS_ERROR", "strict_error"), p(E, "STATUS_LOOSE", "loose"), p(E, "YAXIS_FOLLOW", "follow"), p(E, "YAXIS_INVERT", "invert");
+x(E, "VERTEX_PLAIN", "plain"), x(E, "VERTEX_BIRDEYE", "birdeye"), x(E, "MODE_STRICT", "strict"), x(E, "MODE_AUTO", "auto"), x(E, "MODE_LOOSE", "loose"), x(E, "STATUS_STRICT", "strict"), x(E, "STATUS_ERROR", "strict_error"), x(E, "STATUS_LOOSE", "loose"), x(E, "YAXIS_FOLLOW", "follow"), x(E, "YAXIS_INVERT", "invert");
 let Z = E;
 export {
   Z as Transform,

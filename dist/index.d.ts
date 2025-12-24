@@ -194,6 +194,19 @@ export declare class Transform {
     stateFull: boolean;
     stateTriangle?: Tri;
     stateBackward?: boolean;
+    /**
+     * Optional properties for MaplatCore extension
+     * These properties allow consuming applications to extend Transform instances
+     * with additional metadata without requiring Module Augmentation
+     */
+    /** Layer priority for rendering order */
+    priority?: number;
+    /** Layer importance for display decisions */
+    importance?: number;
+    /** Bounds in XY (source) coordinate system */
+    xyBounds?: Feature<Polygon>;
+    /** Bounds in Mercator (Web Mercator) coordinate system */
+    mercBounds?: Feature<Polygon>;
     constructor();
     /**
      * コンパイルされた設定を適用します
