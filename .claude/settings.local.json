@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__serena__list_dir",
+      "mcp__serena__activate_project",
+      "mcp__serena__get_symbols_overview",
+      "Bash(wc -l /Users/kochizufan/github/MaplatTransform/src/*.ts /Users/kochizufan/github/MaplatTransform/tests/*.ts)",
+      "Bash(npm test:*)",
+      "Bash(xargs ls:*)",
+      "Bash(npm run:*)"
+    ]
+  }
+}
