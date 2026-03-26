@@ -24,7 +24,6 @@ const removeTsExtensions = () => {
 };
 
 export default defineConfig({
-  root: isPackageBuild ? undefined : resolve(__dirname, 'demo'),
   base: isPackageBuild ? '/' : './',
   build: isPackageBuild ? {
     outDir: 'dist',
@@ -46,21 +45,24 @@ export default defineConfig({
       }
     }
   } : {
-    outDir: resolve(__dirname, 'dist-demo'),
+    outDir: 'dist-demo',
     emptyOutDir: true,
+    rollupOptions: {
+      input: resolve(__dirname, 'index.html'),
+    },
   },
   server: {
     open: '/',
   },
   plugins: [
     removeTsExtensions(),
-    ...(isPackageBuild ? [dts({
+    dts({
       outDir: 'dist',
       exclude: ['tests', 'demo', 'node_modules'],
       rollupTypes: true,
-      tsconfigPath: resolve(__dirname, 'tsconfig.json'),
+      tsconfigPath: './tsconfig.json',
       logLevel: 'silent'
-    })] : [])
+    })
   ],
   test: {
     environment: 'jsdom',
