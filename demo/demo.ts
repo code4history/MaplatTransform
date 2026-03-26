@@ -7,8 +7,8 @@
  * compiled ファイルから直接読み込む（高速・再 build 不要）
  */
 
-import { Transform } from "./index.ts";
-import type { Compiled, PointSet } from "./index.ts";
+import { Transform } from "../src/index.ts";
+import type { Compiled, PointSet } from "../src/index.ts";
 
 // ─── 型 ──────────────────────────────────────────────────────────────────────
 
@@ -786,7 +786,7 @@ function vizRoundtrip(
 // ─── マップ読み込み ───────────────────────────────────────────────────────────
 
 async function loadState(mapConfig: MapConfig, ver: FormatVer): Promise<LoadedState> {
-  const filePath = `./compiled/${mapConfig.key}_${ver}.json`;
+  const filePath = `../tests/compiled/${mapConfig.key}_${ver}.json`;
   const compiled: Compiled = await fetch(filePath).then(r => {
     if (!r.ok) throw new Error(`${r.status} ${r.url}`);
     return r.json();
