@@ -147,7 +147,7 @@ function indexesToTri(
             if (bMatch) return bboxes[parseInt(bMatch[1])];
             const eMatch = (index as string).match(/^e(\d+)$/);
             if (eMatch) return edgeNodes[parseInt(eMatch[1])];
-            throw "Bad index value for indexesToTri";
+            throw new Error("Bad index value for indexesToTri");
           })();
       return bakw
         ? [[point_base![1], point_base![0]], index]

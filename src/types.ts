@@ -67,7 +67,7 @@ export interface Compiled {
   strictMode?: StrictMode;
   vertices_params: number[][];
   vertices_points: PointSet[];
-  edges: EdgeSet[];
+  edges?: EdgeSet[];
   bounds?: number[][];
   boundsPolygon?: Feature<Polygon>;
   wh?: number[];

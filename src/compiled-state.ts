@@ -27,7 +27,7 @@ export function isModernCompiled(
   compiled: Compiled | CompiledLegacy
 ): compiled is Compiled {
   return Boolean(
-    compiled.version ||
+    compiled.version !== undefined ||
     (!(compiled as CompiledLegacy).tins && compiled.points && compiled.tins_points)
   );
 }
@@ -200,7 +200,7 @@ function rebuildLegacyPoints(tins: TinsBD): PointSet[] {
   const features = tins.forw!.features;
   for (let i = 0; i < features.length; i++) {
     const tri = features[i];
-    (["a", "b", "c"] as PropertyTriKey[]).map((key, idx) => {
+    (["a", "b", "c"] as PropertyTriKey[]).forEach((key, idx) => {
       const forw = tri.geometry!.coordinates[0][idx];
       const bakw = tri.properties![key].geom;
       const pIdx = tri.properties![key].index;

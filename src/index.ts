@@ -342,8 +342,10 @@ export class Transform {
    * @throws {Error} 逆方向変換が許可されていない状態での逆変換時
    */
   transform(apoint: number[], backward?: boolean, ignoreBounds?: boolean): number[] | false {
+    if (!this.tins)
+      throw new Error("setCompiled() must be called before transform()");
     if (backward && this.strict_status == Transform.STATUS_ERROR)
-      throw 'Backward transform is not allowed if strict_status == "strict_error"';
+      throw new Error('Backward transform is not allowed if strict_status == "strict_error"');
     // if (!this.tins) this.updateTin();
     if (this.yaxisMode == Transform.YAXIS_FOLLOW && backward) {
       apoint = [apoint[0], -1 * apoint[1]];
