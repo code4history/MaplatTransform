@@ -18,6 +18,7 @@ import type {
 import type { WeightBuffer } from "./geometry.ts";
 
 export const FORMAT_VERSION = 2.00703;
+export const FORMAT_VERSION_V3 = 3;
 
 /**
  * Type guard for discriminating modern compiled payloads.
@@ -51,7 +52,7 @@ export function restoreModernState(compiled: Compiled): ModernStatePayload {
     bounds: compiled.bounds,
     boundsPolygon: compiled.boundsPolygon,
     wh: compiled.wh,
-    xy: compiled.bounds ? compiled.xy : [0, 0]
+    xy: compiled.xy ?? [0, 0]
   };
 }
 
@@ -110,8 +111,9 @@ function buildVerticesParams(compiled: Compiled): VerticesParamsBD {
 }
 
 function buildVertexTins(compiled: Compiled, bakw: boolean) {
-  return [0, 1, 2, 3].map(idx => {
-    const idxNxt = (idx + 1) % 4;
+  const N = compiled.vertices_points.length;
+  return Array.from({ length: N }, (_, idx) => {
+    const idxNxt = (idx + 1) % N;
     const tri = indexesToTri(
       ["c", `b${idx}`, `b${idxNxt}`],
       compiled.points,

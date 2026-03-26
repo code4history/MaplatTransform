@@ -142,22 +142,13 @@ function indexesToTri(
         ? points[index as number]
         : index === "c"
           ? cent
-          : index === "b0"
-            ? bboxes[0]
-            : index === "b1"
-              ? bboxes[1]
-              : index === "b2"
-                ? bboxes[2]
-                : index === "b3"
-                  ? bboxes[3]
-                  : (function () {
-                    const match = (index as string).match(/e(\d+)/);
-                    if (match) {
-                      const nodeIndex = parseInt(match[1]);
-                      return edgeNodes[nodeIndex];
-                    }
-                    throw "Bad index value for indexesToTri";
-                  })();
+          : (function () {
+            const bMatch = (index as string).match(/^b(\d+)$/);
+            if (bMatch) return bboxes[parseInt(bMatch[1])];
+            const eMatch = (index as string).match(/^e(\d+)$/);
+            if (eMatch) return edgeNodes[parseInt(eMatch[1])];
+            throw "Bad index value for indexesToTri";
+          })();
       return bakw
         ? [[point_base![1], point_base![0]], index]
         : [[point_base![0], point_base![1]], index];
