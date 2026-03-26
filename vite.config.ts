@@ -12,9 +12,9 @@ const removeTsExtensions = () => {
     name: 'remove-ts-extensions',
     transform(code: string, id: string) {
       if (id.endsWith('.ts') || id.endsWith('.tsx')) {
-        // Replace imports with .ts extensions
+        // Replace imports with .ts extensions (both ./ and ../ relative paths)
         return code.replace(
-          /from\s+['"](\.\/[^'"]+)\.ts['"]/g,
+          /from\s+['"](\.\.[/][^'"]+|\.\/[^'"]+)\.ts['"]/g,
           'from "$1"'
         );
       }
@@ -24,7 +24,7 @@ const removeTsExtensions = () => {
 };
 
 export default defineConfig({
-  base: './',
+  base: isPackageBuild ? '/' : './',
   build: isPackageBuild ? {
     outDir: 'dist',
     emptyOutDir: true,
@@ -48,16 +48,17 @@ export default defineConfig({
     outDir: 'dist-demo',
     emptyOutDir: true,
     rollupOptions: {
-      input: {
-        main: resolve(__dirname, 'index.html')
-      }
-    }
+      input: resolve(__dirname, 'demo/index.html'),
+    },
+  },
+  server: {
+    open: '/demo/',
   },
   plugins: [
     removeTsExtensions(),
     dts({
-      outDir: isPackageBuild ? 'dist' : 'dist-demo',
-      exclude: ['tests', 'public'],
+      outDir: 'dist',
+      exclude: ['tests', 'demo', 'node_modules'],
       rollupTypes: true,
       tsconfigPath: './tsconfig.json',
       logLevel: 'silent'

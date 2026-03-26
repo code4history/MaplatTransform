@@ -18,6 +18,7 @@ import type {
 import type { WeightBuffer } from "./geometry.ts";
 
 export const FORMAT_VERSION = 2.00703;
+export const FORMAT_VERSION_V3 = 3;
 
 /**
  * Type guard for discriminating modern compiled payloads.
@@ -26,7 +27,7 @@ export function isModernCompiled(
   compiled: Compiled | CompiledLegacy
 ): compiled is Compiled {
   return Boolean(
-    compiled.version ||
+    compiled.version !== undefined ||
     (!(compiled as CompiledLegacy).tins && compiled.points && compiled.tins_points)
   );
 }
@@ -51,7 +52,7 @@ export function restoreModernState(compiled: Compiled): ModernStatePayload {
     bounds: compiled.bounds,
     boundsPolygon: compiled.boundsPolygon,
     wh: compiled.wh,
-    xy: compiled.bounds ? compiled.xy : [0, 0]
+    xy: compiled.xy ?? [0, 0]
   };
 }
 
@@ -110,8 +111,9 @@ function buildVerticesParams(compiled: Compiled): VerticesParamsBD {
 }
 
 function buildVertexTins(compiled: Compiled, bakw: boolean) {
-  return [0, 1, 2, 3].map(idx => {
-    const idxNxt = (idx + 1) % 4;
+  const N = compiled.vertices_points.length;
+  return Array.from({ length: N }, (_, idx) => {
+    const idxNxt = (idx + 1) % N;
     const tri = indexesToTri(
       ["c", `b${idx}`, `b${idxNxt}`],
       compiled.points,
@@ -198,7 +200,7 @@ function rebuildLegacyPoints(tins: TinsBD): PointSet[] {
   const features = tins.forw!.features;
   for (let i = 0; i < features.length; i++) {
     const tri = features[i];
-    (["a", "b", "c"] as PropertyTriKey[]).map((key, idx) => {
+    (["a", "b", "c"] as PropertyTriKey[]).forEach((key, idx) => {
       const forw = tri.geometry!.coordinates[0][idx];
       const bakw = tri.properties![key].geom;
       const pIdx = tri.properties![key].index;

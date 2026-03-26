@@ -147,9 +147,11 @@ function transformArr(
           ? gridCache[normX][normY]
           : []
         : [];
-      tins = featureCollection(tinsKey.map((key: number) => tins.features[key]));
+      const filteredTins = featureCollection(tinsKey.map((key: number) => tins.features[key]));
+      tin = hit(point, filteredTins);
+    } else {
+      tin = hit(point, tins);
     }
-    tin = hit(point, tins);
   }
   if (stateSetFunc) stateSetFunc(tin);
   return tin
@@ -172,6 +174,7 @@ function unitCalc(
   gridNum: number
 ) {
   let normCoord = Math.floor((coord - origin) / unit);
+  if (normCoord < 0) normCoord = 0;
   if (normCoord >= gridNum) normCoord = gridNum - 1;
   return normCoord;
 }
@@ -229,20 +232,10 @@ function decideUseVertex(radian: number, radianList: number[]): number | undefin
 * normalizeRadian(3 * Math.PI, true); // returns π
 */
 function normalizeRadian(target: number, noNegative = false): number {
-  // 正規化の範囲を決定する関数
-  const rangeFunc = noNegative
-    ? function (val: number) {
-      return !(val >= 0 && val < Math.PI * 2);  // [0, 2π)の範囲外
-    }
-    : function (val: number) {
-      return !(val > -1 * Math.PI && val <= Math.PI);  // (-π, π]の範囲外
-    };
-
-  // 範囲内に収まるまで2πを加減算
-  while (rangeFunc(target)) {
-    target = target + 2 * Math.PI * (target > 0 ? -1 : 1);
-  }
-  return target;
+  const TWO_PI = 2 * Math.PI;
+  const mod = target - Math.floor(target / TWO_PI) * TWO_PI;
+  if (noNegative) return mod;
+  return mod > Math.PI ? mod - TWO_PI : mod;
 }
 
 export { transformArr, unitCalc };

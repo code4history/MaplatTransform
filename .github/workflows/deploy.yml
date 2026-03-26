@@ -24,7 +24,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: "pnpm"
           
       - name: Install dependencies
@@ -32,7 +32,12 @@ jobs:
         
       - name: Build demo site
         run: pnpm run build:demo
-        
+
+      - name: Copy compiled files for demo
+        run: |
+          mkdir -p dist-demo/tests/compiled
+          cp tests/compiled/*_v2.json tests/compiled/*_v3.json dist-demo/tests/compiled/
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
         
