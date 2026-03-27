@@ -48,7 +48,11 @@ export default defineConfig({
     outDir: 'dist-demo',
     emptyOutDir: true,
     rollupOptions: {
-      input: resolve(__dirname, 'index.html'),
+      input: {
+        index:    resolve(__dirname, 'index.html'),
+        singlemap: resolve(__dirname, 'demo/singlemap.html'),
+        submaps:   resolve(__dirname, 'demo/submaps.html'),
+      },
     },
   },
   server: {

@@ -120,3 +120,43 @@ export interface LegacyStatePayload {
   centroid?: CentroidBD;
   kinks?: KinksBD;
 }
+
+// ─── MapTransform types ───────────────────────────────────────────────────────
+
+/**
+ * Viewport representation: center in mercator, zoom level, rotation in radians.
+ */
+export interface Viewpoint {
+  /** Mercator coordinate [x, y] */
+  center: number[];
+  /** Mercator zoom level */
+  zoom: number;
+  /** Rotation angle in radians */
+  rotation: number;
+}
+
+/**
+ * Sub-map TIN data for MapTransform.setMapData().
+ */
+export interface SubMapData {
+  /** Compiled TIN data */
+  compiled: Compiled;
+  /** Layer priority (higher = checked first) */
+  priority: number;
+  /** Layer importance (used when multiple layers overlap) */
+  importance: number;
+  /** Bounds vertices in pixel (XY) space. Falls back to compiled.bounds if omitted. */
+  bounds?: number[][];
+}
+
+/**
+ * Input data for MapTransform.setMapData().
+ */
+export interface MapData {
+  /** Compiled TIN data for the main layer */
+  compiled: Compiled;
+  /** maxZoom value used to compute _maxxy = 2^maxZoom * 256 */
+  maxZoom?: number;
+  /** Sub-map layers */
+  sub_maps?: SubMapData[];
+}

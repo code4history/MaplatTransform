@@ -103,6 +103,142 @@ export declare type KinksBD = {
 };
 
 /**
+ * Input data for MapTransform.setMapData().
+ */
+export declare interface MapData {
+    /** Compiled TIN data for the main layer */
+    compiled: Compiled;
+    /** maxZoom value used to compute _maxxy = 2^maxZoom * 256 */
+    maxZoom?: number;
+    /** Sub-map layers */
+    sub_maps?: SubMapData[];
+}
+
+/**
+ * MapTransform — 処理2・3・4を担う座標変換クラス
+ *
+ * - 処理2: submaps 属性を持つ地図で、複数 TIN のうちどれを適用するか判定・選択し座標変換
+ * - 処理3: ビューポート ↔ メルカトル5点 変換
+ * - 処理4: ビューポート ↔ TIN 適用後メルカトル5点 変換
+ *
+ * OpenLayers への依存ゼロ。ブラウザ・Node.js 両対応。
+ */
+export declare class MapTransform {
+    private mainTin;
+    private subTins;
+    private _maxxy;
+    /**
+     * 地図データ（コンパイル済み TIN + sub_maps）をロードする
+     *
+     * @param mapData - メイン TIN と sub_maps の情報
+     */
+    setMapData(mapData: MapData): void;
+    /**
+     * ピクセル座標 → メルカトル座標（最適レイヤー選択）
+     *
+     * @param xy - ピクセル座標 [x, y]
+     * @returns メルカトル座標、または範囲外の場合は false
+     */
+    xy2Merc(xy: number[]): number[] | false;
+    /**
+     * メルカトル座標 → ピクセル座標（最適レイヤー選択）
+     *
+     * @param merc - メルカトル座標 [x, y]
+     * @returns ピクセル座標、または範囲外の場合は false
+     */
+    merc2Xy(merc: number[]): number[] | false;
+    /**
+     * ピクセル座標 → メルカトル座標（レイヤーID付き）
+     * histmap_tin.ts xy2MercAsync_returnLayer() の同期版
+     *
+     * @param xy - ピクセル座標 [x, y]
+     * @returns [レイヤーインデックス, メルカトル座標] または false
+     */
+    xy2MercWithLayer(xy: number[]): [number, number[]] | false;
+    /**
+     * メルカトル座標 → ピクセル座標（複数レイヤー結果）
+     * histmap_tin.ts merc2XyAsync_returnLayer() の同期版
+     *
+     * @param merc - メルカトル座標 [x, y]
+     * @returns 最大2要素の配列。各要素は [レイヤーインデックス, ピクセル座標] または undefined
+     */
+    merc2XyWithLayer(merc: number[]): ([number, number[]] | undefined)[];
+    /**
+     * メルカトル5点 → システム座標（複数レイヤー）
+     * histmap_tin.ts mercs2SysCoordsAsync_multiLayer() の同期版
+     *
+     * @param mercs - 5点のメルカトル座標配列（中心＋上下左右）
+     * @returns 各レイヤーのシステム座標配列（または undefined）
+     */
+    mercs2SysCoords(mercs: number[][]): (number[][] | undefined)[];
+    /**
+     * ビューポート → TIN 適用後メルカトル5点
+     * histmap_tin.ts viewpoint2MercsAsync() の同期版
+     *
+     * @param viewpoint - ビューポート（center, zoom, rotation）
+     * @param size - 画面サイズ [width, height]
+     * @returns TIN 変換後のメルカトル5点
+     */
+    viewpoint2Mercs(viewpoint: Viewpoint, size: [number, number]): number[][];
+    /**
+     * TIN 適用後メルカトル5点 → ビューポート
+     * histmap_tin.ts mercs2ViewpointAsync() の同期版
+     *
+     * @param mercs - TIN 変換後のメルカトル5点
+     * @param size - 画面サイズ [width, height]
+     * @returns ビューポート（center, zoom, rotation）
+     */
+    mercs2Viewpoint(mercs: number[][], size: [number, number]): Viewpoint;
+    /** zoom2Radius の静的ラッパー */
+    static zoom2Radius(size: [number, number], zoom: number): number;
+    /** mercViewpoint2Mercs の静的ラッパー */
+    static mercViewpoint2Mercs(center: number[], zoom: number, rotation: number, size: [number, number]): number[][];
+    /** mercs2MercViewpoint の静的ラッパー */
+    static mercs2MercViewpoint(mercs: number[][], size: [number, number]): Viewpoint;
+    /** xy2SysCoord の静的ラッパー */
+    static xy2SysCoord(xy: number[], maxxy: number): number[];
+    /** sysCoord2Xy の静的ラッパー */
+    static sysCoord2Xy(sysCoord: number[], maxxy: number): number[];
+    private _assertMapData;
+    private _assertMaxxy;
+    /** priority 降順でソートした [index, tin, isMain] の配列を返す */
+    private _getTinsSortedByPriority;
+    /** メイン TIN + 全 sub TIN を index 付きで返す */
+    private _getAllTinsWithIndex;
+    /**
+     * 指定レイヤーインデックスで TIN 変換を実行する
+     * index 0 → mainTin, index 1..n → subTins[index-1]
+     */
+    private _transformByIndex;
+    /** 内部用 xy2SysCoord（_maxxy を使用） */
+    private xy2SysCoordInternal;
+}
+
+export declare const MERC_CROSSMATRIX: number[][];
+
+export declare const MERC_MAX = 20037508.342789244;
+
+/**
+ * メルカトル5地点情報からメルカトル地図でのサイズ情報（中心座標、ズーム、回転）を得る
+ *
+ * @param mercs - 中心＋上下左右の5点のメルカトル座標配列
+ * @param size - 画面サイズ [width, height]
+ * @returns Viewpoint オブジェクト（center, zoom, rotation）
+ */
+export declare function mercs2MercViewpoint(mercs: number[][], size: [number, number]): Viewpoint;
+
+/**
+ * 画面サイズと地図ズームから、メルカトル座標上での5座標を取得する
+ *
+ * @param center - 中心のメルカトル座標 [x, y]
+ * @param zoom - メルカトルズームレベル
+ * @param rotation - 回転角（ラジアン）
+ * @param size - 画面サイズ [width, height]
+ * @returns 中心＋上下左右の5点のメルカトル座標配列
+ */
+export declare function mercViewpoint2Mercs(center: number[], zoom: number, rotation: number, size: [number, number]): number[][];
+
+/**
  * エッジセットを正規化する
  * 古いバージョンのフォーマットを新しいフォーマットに変換する
  *
@@ -129,6 +265,15 @@ declare type PropertyTri = {
 export declare type PropertyTriKey = "a" | "b" | "c";
 
 /**
+ * 与えられた差分行列を回転する
+ *
+ * @param xys - 回転する座標の配列
+ * @param theta - 回転角（ラジアン）
+ * @returns 回転後の座標の配列
+ */
+export declare function rotateMatrix(xys: number[][], theta: number): number[][];
+
+/**
  * 三角形の頂点の順序を修正する
  * 地図外郭の頂点を含む三角形について、頂点の順序を統一する
  * @param tins 三角形群
@@ -145,6 +290,29 @@ export declare type StrictMode = "strict" | "auto" | "loose";
  * Result of strictness evaluation.
  */
 export declare type StrictStatus = "strict" | "strict_error" | "loose";
+
+/**
+ * Sub-map TIN data for MapTransform.setMapData().
+ */
+export declare interface SubMapData {
+    /** Compiled TIN data */
+    compiled: Compiled;
+    /** Layer priority (higher = checked first) */
+    priority: number;
+    /** Layer importance (used when multiple layers overlap) */
+    importance: number;
+    /** Bounds vertices in pixel (XY) space. Falls back to compiled.bounds if omitted. */
+    bounds?: number[][];
+}
+
+/**
+ * システム座標（EPSG:3857相当）をピクセル座標に変換する
+ *
+ * @param sysCoord - システム座標 [x, y]
+ * @param maxxy - 最大座標値（2^maxZoom * 256）
+ * @returns ピクセル座標 [x, y]
+ */
+export declare function sysCoord2Xy(sysCoord: number[], maxxy: number): number[];
 
 export declare type Tins = FeatureCollection<Polygon, PropertiesTri>;
 
@@ -273,6 +441,18 @@ export declare type VerticesParamsBD = {
     [key in BiDirectionKey]?: VerticesParams;
 };
 
+/**
+ * Viewport representation: center in mercator, zoom level, rotation in radians.
+ */
+export declare interface Viewpoint {
+    /** Mercator coordinate [x, y] */
+    center: number[];
+    /** Mercator zoom level */
+    zoom: number;
+    /** Rotation angle in radians */
+    rotation: number;
+}
+
 declare type WeightBuffer = {
     [index: string]: number;
 };
@@ -285,8 +465,26 @@ export declare type WeightBufferBD = {
 };
 
 /**
+ * ピクセル座標をシステム座標（EPSG:3857相当）に変換する
+ *
+ * @param xy - ピクセル座標 [x, y]
+ * @param maxxy - 最大座標値（2^maxZoom * 256）
+ * @returns システム座標 [x, y]
+ */
+export declare function xy2SysCoord(xy: number[], maxxy: number): number[];
+
+/**
  * Y-axis handling directive.
  */
 export declare type YaxisMode = "follow" | "invert";
+
+/**
+ * size（画面サイズ）とズームから、地図面座標上での半径を得る
+ *
+ * @param size - 画面サイズ [width, height]
+ * @param zoom - メルカトルズームレベル
+ * @returns メルカトル座標上での半径
+ */
+export declare function zoom2Radius(size: [number, number], zoom: number): number;
 
 export { }
