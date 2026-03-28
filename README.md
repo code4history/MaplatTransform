@@ -15,6 +15,9 @@ This is part of the [Maplat](https://github.com/code4history/Maplat/) project.
 - **Topology Preservation:** Maintains homeomorphic properties during transformation
 - **Multiple Coordinate System Support:** Handles transformations between various coordinate systems including standard orthogonal coordinates, Y-axis inverted coordinates, and distorted coordinates like bird's-eye views
 - **State Management:** Save and restore transformation states
+- **Sub-map Selection (Processing 2):** For maps with multiple overlapping TIN regions (`sub_maps`), automatically determines which TIN to apply based on region boundaries, priority, and importance
+- **Viewport Transformation (Processing 3):** Converts a display viewport (center, zoom, rotation) in pixel coordinate space to a viewport in the map coordinate space (EPSG:3857)
+- **Cross-map Viewport Sync (Processing 4):** Converts a display viewport from one pixel map directly to the corresponding viewport of another pixel map, via the shared map coordinate space
 
 ## Requirements
 
@@ -66,6 +69,90 @@ The library may throw errors in the following cases:
 - Invalid data structure during transformation
 
 If errors occur, the transformation definition data needs to be modified. Please use editor tools that incorporate [@maplat/tin](https://github.com/code4history/MaplatTin/) to modify transformation definitions.
+
+## MapTransform Usage
+
+### Processing 2 — Sub-map selection and coordinate transformation
+
+When a single map image contains multiple overlapping TIN definitions (`sub_maps`), use `MapTransform` to automatically select the correct TIN and transform coordinates.
+
+```javascript
+import { MapTransform } from '@maplat/transform';
+
+const mt = new MapTransform();
+mt.setMapData({
+  compiled: mainCompiledData,   // Main TIN compiled data
+  sub_maps: [
+    { compiled: sub0Data, priority: 1, importance: 1 },
+    { compiled: sub1Data, priority: 2, importance: 2 },
+  ],
+});
+
+// Forward: pixel XY → EPSG:3857 (returns [layerIndex, mercCoord] or false)
+const result = mt.xy2MercWithLayer([320, 240]);
+if (result) {
+  const [layerIndex, merc] = result;
+  console.log('layer:', layerIndex, 'merc:', merc);
+}
+
+// Reverse: EPSG:3857 → pixel XY (returns up to 2 layers, each [layerIndex, xyCoord] or undefined)
+const results = mt.merc2XyWithLayer([15000000, 4000000]);
+results.forEach((r, i) => {
+  if (r) console.log(`result ${i}: layer ${r[0]}, xy`, r[1]);
+});
+```
+
+### Processing 3 — Viewport transformation
+
+Convert a pixel-map viewport (center position, zoom level, rotation angle) to and from a geographic viewport in EPSG:3857. The viewport is represented as five Mercator points (center + four cardinal offsets).
+
+```javascript
+import { MapTransform } from '@maplat/transform';
+
+const mt = new MapTransform();
+mt.setMapData({ compiled: compiledData });
+
+const canvasSize = [800, 600];   // [width, height] in pixels
+
+// Pixel viewport → EPSG:3857 five points
+const viewpoint = {
+  center: [15000000, 4000000],  // EPSG:3857 center of the pixel-space viewport
+  zoom: 14,
+  rotation: 0,
+};
+const mercs = mt.viewpoint2Mercs(viewpoint, canvasSize);
+// mercs: [[cx,cy], [north], [east], [south], [west]]  (EPSG:3857)
+
+// EPSG:3857 five points → pixel viewport
+const vp = mt.mercs2Viewpoint(mercs, canvasSize);
+console.log(vp.center, vp.zoom, vp.rotation);
+```
+
+### Processing 4 — Cross-map viewport synchronization
+
+Convert the display viewport of one pixel map to the corresponding viewport of another pixel map, using the shared EPSG:3857 space as an intermediary.
+
+```javascript
+import { MapTransform } from '@maplat/transform';
+
+const mtA = new MapTransform();
+mtA.setMapData({ compiled: compiledDataA });
+
+const mtB = new MapTransform();
+mtB.setMapData({ compiled: compiledDataB });
+
+const canvasSize = [800, 600];
+
+// Map A viewport (pixel space A)
+const vpA = { center: [15000000, 4000000], zoom: 14, rotation: 0 };
+
+// Pixel space A → EPSG:3857 five points (Processing 3 forward)
+const mercs = mtA.viewpoint2Mercs(vpA, canvasSize);
+
+// EPSG:3857 five points → Map B viewport (Processing 3 reverse)
+const vpB = mtB.mercs2Viewpoint(mercs, canvasSize);
+console.log('Map B viewport:', vpB);
+```
 
 ## API Reference
 
@@ -119,6 +206,78 @@ Perform coordinate transformation.
 - `Transform.YAXIS_FOLLOW`: Follow Y-axis direction
 - `Transform.YAXIS_INVERT`: Invert Y-axis direction
 
+### MapTransform Class
+
+The class for sub-map selection, viewport transformation, and cross-map viewport synchronization (Processings 2–4).
+
+#### Constructor
+
+```javascript
+const mt = new MapTransform();
+```
+
+#### Methods
+
+##### `setMapData(mapData: MapData): void`
+
+Load a main TIN and optional sub-map TINs.
+
+- **Parameters:**
+  - `mapData`: `{ compiled, maxZoom?, sub_maps? }` — main compiled TIN data, optional explicit maxZoom, and optional array of sub-map definitions
+
+##### `xy2Merc(xy: number[]): number[] | false`
+
+Transform a pixel coordinate to EPSG:3857 using the main TIN.
+
+- **Parameters:** `xy` — pixel coordinate `[x, y]`
+- **Returns:** EPSG:3857 coordinate, or `false` if out of bounds
+
+##### `merc2Xy(merc: number[]): number[] | false`
+
+Transform an EPSG:3857 coordinate to pixel coordinate using the main TIN (reverse).
+
+- **Parameters:** `merc` — EPSG:3857 coordinate `[x, y]`
+- **Returns:** Pixel coordinate, or `false` if out of bounds
+
+##### `xy2MercWithLayer(xy: number[]): [number, number[]] | false`
+
+Transform a pixel coordinate to EPSG:3857, automatically selecting the appropriate TIN from sub-maps based on priority and region (Processing 2).
+
+- **Parameters:** `xy` — pixel coordinate `[x, y]`
+- **Returns:** `[layerIndex, mercCoord]` or `false` if out of bounds
+
+##### `merc2XyWithLayer(merc: number[]): ([number, number[]] | undefined)[]`
+
+Transform an EPSG:3857 coordinate to pixel coordinate across all applicable TIN layers, returning up to 2 results ordered by importance (Processing 2).
+> To return more than 2 layers, increase the limit in the `.slice(0, 2)` / `.filter(i < 2)` lines inside the implementation.
+
+- **Parameters:** `merc` — EPSG:3857 coordinate `[x, y]`
+- **Returns:** Array of up to 2 elements; each is `[layerIndex, xyCoord]` or `undefined`
+
+##### `viewpoint2Mercs(viewpoint: Viewpoint, size: [number, number]): number[][]`
+
+Convert a pixel-space viewport to five EPSG:3857 points (Processing 3).
+
+- **Parameters:**
+  - `viewpoint`: `{ center, zoom, rotation }` — viewport in pixel space (center as EPSG:3857 equivalent via `xy2SysCoord`)
+  - `size`: Canvas size `[width, height]`
+- **Returns:** Array of 5 EPSG:3857 points `[center, north, east, south, west]`
+- **Throws:** Error if the center point is outside the TIN bounds
+
+##### `mercs2Viewpoint(mercs: number[][], size: [number, number]): Viewpoint`
+
+Convert five EPSG:3857 points back to a pixel-space viewport (Processing 3 reverse).
+
+- **Parameters:**
+  - `mercs`: Array of 5 EPSG:3857 points (as returned by `viewpoint2Mercs`)
+  - `size`: Canvas size `[width, height]`
+- **Returns:** `Viewpoint` — `{ center, zoom, rotation }` in pixel space
+- **Throws:** Error if the center point cannot be reverse-transformed
+
+#### Accessors
+
+- `maxxy: number` — `2^maxZoom × 256`; the pixel-to-EPSG:3857 scale factor
+
 ### Exported Types
 
 - `PointSet`, `BiDirectionKey`, `WeightBufferBD`, `VertexMode`, `StrictMode`, `StrictStatus`, `YaxisMode`
@@ -126,6 +285,9 @@ Perform coordinate transformation.
 - `Compiled`, `CompiledLegacy`
 - `Tins`, `Tri`, `PropertyTriKey`
 - `Edge`, `EdgeSet`, `EdgeSetLegacy`
+- `Viewpoint` — `{ center: number[], zoom: number, rotation: number }`
+- `MapData` — `{ compiled: Compiled, maxZoom?: number, sub_maps?: SubMapData[] }`
+- `SubMapData` — `{ compiled: Compiled, priority: number, importance: number, bounds?: number[][] }`
 
 ### Exported Utility Functions
 

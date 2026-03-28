@@ -3,127 +3,171 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MaplatTransform V2/V3 Demo</title>
+  <title>MaplatTransform Demos</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: "Helvetica Neue", Arial, sans-serif; background: #eef0f4; color: #222; }
+    body {
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      background: #eef0f4;
+      color: #222;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
 
     header {
       background: #1a2744;
       color: #fff;
-      padding: 10px 20px;
+      padding: 18px 24px;
+    }
+    header h1 { font-size: 20px; font-weight: 700; letter-spacing: 0.02em; }
+    header p { font-size: 13px; color: #aac; margin-top: 4px; }
+
+    main {
+      flex: 1;
+      padding: 32px 24px;
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-    header h1 { font-size: 15px; white-space: nowrap; }
-
-    .ctrl-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1; }
-
-    label { font-size: 13px; }
-    select {
-      padding: 4px 8px;
-      border-radius: 4px;
-      border: none;
-      font-size: 13px;
-      min-width: 200px;
+      gap: 20px;
     }
 
-    .btn-group { display: flex; gap: 3px; }
-    .ver-btn, .viz-tab {
-      padding: 5px 13px;
-      border: 1.5px solid rgba(255,255,255,0.3);
-      border-radius: 4px;
-      background: transparent;
-      color: #fff;
-      font-size: 12px;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-    .ver-btn:hover, .viz-tab:hover { background: rgba(255,255,255,0.12); }
-    .ver-btn.active { background: #c0392b; border-color: #c0392b; }
-    .viz-tab.active { background: #3a7bd5; border-color: #3a7bd5; }
-
-    .divider {
-      width: 1px; height: 22px;
-      background: rgba(255,255,255,0.2);
-      align-self: center;
+    .demo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
+      width: 100%;
+      max-width: 900px;
     }
 
-    #status {
-      font-size: 12px;
-      color: #aac;
-      white-space: nowrap;
-      margin-left: auto;
-    }
-
-    #map-note {
-      font-size: 11px;
-      color: #f39c12;
-      padding: 2px 20px;
-      background: rgba(243,156,18,0.1);
-      min-height: 20px;
-    }
-
-    .panels {
-      display: flex;
-      gap: 12px;
-      padding: 10px 16px;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-    .panel {
+    .demo-card {
       background: #fff;
-      border-radius: 6px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.10);
       overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      text-decoration: none;
+      color: inherit;
+      transition: box-shadow 0.18s, transform 0.18s;
     }
-    canvas { display: block; }
+    .demo-card:hover {
+      box-shadow: 0 6px 24px rgba(0,0,0,0.16);
+      transform: translateY(-2px);
+    }
 
-    #legend {
-      background: #fff;
-      margin: 0 16px 12px;
-      padding: 8px 14px;
-      border-radius: 6px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    .card-header {
+      padding: 18px 20px 12px;
+      border-bottom: 1px solid #eef0f4;
+    }
+    .card-header h2 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #1a2744;
+      margin-bottom: 4px;
+    }
+    .card-header .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      background: #e8f0fe;
+      color: #3a7bd5;
+      margin-bottom: 6px;
+    }
+    .card-body {
+      padding: 14px 20px 18px;
+      font-size: 13px;
+      line-height: 1.7;
+      color: #444;
+      flex: 1;
+    }
+    .card-body ul {
+      padding-left: 18px;
+      margin-top: 6px;
+    }
+    .card-body li { margin-bottom: 3px; }
+
+    .card-footer {
+      padding: 12px 20px;
+      background: #f8f9fb;
+      border-top: 1px solid #eef0f4;
+      font-size: 13px;
+      color: #3a7bd5;
+      font-weight: 600;
+    }
+
+    footer {
+      text-align: center;
       font-size: 12px;
-      line-height: 1.8;
+      color: #999;
+      padding: 16px;
     }
   </style>
 </head>
 <body>
   <header>
-    <h1>MaplatTransform V2/V3 Demo</h1>
-    <div class="ctrl-row">
-      <label>
-        テストケース:
-        <select id="map-select"></select>
-      </label>
-      <div class="divider"></div>
-      <div class="btn-group">
-        <button class="ver-btn" data-ver="v2">v2</button>
-        <button class="ver-btn active" data-ver="v3">v3</button>
-      </div>
-      <div class="divider"></div>
-      <div class="btn-group">
-        <button class="viz-tab active" data-viz="rays">無限遠半直線</button>
-        <button class="viz-tab" data-viz="grid">グリッド変換</button>
-        <button class="viz-tab" data-viz="roundtrip">ラウンドトリップ誤差</button>
-      </div>
-    </div>
-    <span id="status">初期化中…</span>
+    <h1>@maplat/transform — デモ一覧</h1>
+    <p>MaplatTransform の各機能を体験できるインタラクティブデモ</p>
   </header>
 
-  <div id="map-note"></div>
+  <main>
+    <div class="demo-grid">
 
-  <div class="panels">
-    <div class="panel"><canvas id="canvas-forw"></canvas></div>
-    <div class="panel"><canvas id="canvas-bakw"></canvas></div>
-  </div>
+      <a class="demo-card" href="./demo/singlemap.html">
+        <div class="card-header">
+          <div class="badge">Phase 1 — 単一TIN</div>
+          <h2>Single Map Demo</h2>
+        </div>
+        <div class="card-body">
+          Transform クラスによる単一 TIN の双方向変換を可視化。
+          <ul>
+            <li>無限遠半直線 / グリッド変換 / ラウンドトリップ誤差</li>
+            <li>v2 / v3 形式の切り替え</li>
+            <li>ズーム・パン対応の2座標系表示</li>
+          </ul>
+        </div>
+        <div class="card-footer">→ demo/singlemap.html</div>
+      </a>
 
-  <div id="legend">凡例を読み込み中...</div>
+      <a class="demo-card" href="./demo/submaps.html">
+        <div class="card-header">
+          <div class="badge">Phase 2 — MapTransform / submap 選択</div>
+          <h2>Submaps Demo</h2>
+        </div>
+        <div class="card-body">
+          MapTransform クラスによる複数 TIN（sub_maps）の選択・変換を可視化。
+          <ul>
+            <li>priority / importance に基づくレイヤー選択</li>
+            <li>各 submap の envelope・三角網を色分け表示</li>
+            <li>クリックで双方向の対応点を複数表示</li>
+            <li>v2 / v3 切り替え対応</li>
+          </ul>
+        </div>
+        <div class="card-footer">→ demo/submaps.html</div>
+      </a>
 
-  <script type="module" src="./demo/demo.ts"></script>
+      <a class="demo-card" href="./demo/mapsync.html">
+        <div class="card-header">
+          <div class="badge">Phase 3・4 — ビューポート同期</div>
+          <h2>Map Sync Demo</h2>
+        </div>
+        <div class="card-body">
+          viewpoint2Mercs / mercs2Viewpoint を使って2つの絵地図間でビューポートを同期。
+          <ul>
+            <li>館林御城図 ↔ 館林城下町図 を並べて表示</li>
+            <li>片方のズーム・パン・回転がもう一方に伝搬</li>
+            <li>中央固定の方角矢印（N）とスケール円</li>
+            <li>Envelope・三角網（TIN）表示</li>
+          </ul>
+        </div>
+        <div class="card-footer">→ demo/mapsync.html</div>
+      </a>
+
+    </div>
+  </main>
+
+  <footer>@maplat/transform — MaplatTransform Demo Portal</footer>
 </body>
 </html>
