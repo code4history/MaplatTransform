@@ -13,32 +13,26 @@
  */
 
 import { MapTransform } from "../src/index.ts";
-import type { Compiled, MapData, Transform } from "../src/index.ts";
+import type { MapData, Transform } from "../src/index.ts";
 
 // ─── 型 ──────────────────────────────────────────────────────────────────────
 
 type Pos = [number, number];
 type FormatVer = "v2" | "v3";
 
-interface SubMapDef {
-  v2: string;
-  v3: string;
+interface SubInfo {
   priority: number;
   importance: number;
 }
 
 interface MapGroupDef {
   label: string;
-  mainV2: string;
-  mainV3: string;
-  subMaps: SubMapDef[];
+  baseName: string;
 }
 
 interface LoadedGroup {
   mapTransform: MapTransform;
-  mainCompiled: Compiled;
-  subCompiledList: Compiled[];
-  subDefs: SubMapDef[];
+  subInfos: SubInfo[];
   wh: [number, number];
   /** Main TIN の4コーナーを Merc 変換した境界（閉じたポリゴン） */
   mainMercBounds: Pos[];
@@ -55,54 +49,15 @@ interface LoadedGroup {
 const MAP_GROUPS: MapGroupDef[] = [
   {
     label: "延岡 1932 (nobeoka)",
-    mainV2: "../tests/compiled/1932_nobeoka_v2.json",
-    mainV3: "../tests/compiled/1932_nobeoka_v3.json",
-    subMaps: [
-      {
-        v2: "../tests/compiled/1932_nobeoka_sub0_v2.json",
-        v3: "../tests/compiled/1932_nobeoka_sub0_v3.json",
-        priority: 1,
-        importance: 1,
-      },
-    ],
+    baseName: "1932_nobeoka",
   },
   {
     label: "第18回コンテスト 優秀賞 (ea)",
-    mainV2: "../tests/compiled/18th_mapcontest_ea_v2.json",
-    mainV3: "../tests/compiled/18th_mapcontest_ea_v3.json",
-    subMaps: [
-      {
-        v2: "../tests/compiled/18th_mapcontest_ea_sub0_v2.json",
-        v3: "../tests/compiled/18th_mapcontest_ea_sub0_v3.json",
-        priority: 1,
-        importance: 1,
-      },
-      {
-        v2: "../tests/compiled/18th_mapcontest_ea_sub1_v2.json",
-        v3: "../tests/compiled/18th_mapcontest_ea_sub1_v3.json",
-        priority: 2,
-        importance: 2,
-      },
-    ],
+    baseName: "18th_mapcontest_ea",
   },
   {
     label: "第18回コンテスト 最優秀賞 (gp)",
-    mainV2: "../tests/compiled/18th_mapcontest_gp_v2.json",
-    mainV3: "../tests/compiled/18th_mapcontest_gp_v3.json",
-    subMaps: [
-      {
-        v2: "../tests/compiled/18th_mapcontest_gp_sub0_v2.json",
-        v3: "../tests/compiled/18th_mapcontest_gp_sub0_v3.json",
-        priority: 1,
-        importance: 1,
-      },
-      {
-        v2: "../tests/compiled/18th_mapcontest_gp_sub1_v2.json",
-        v3: "../tests/compiled/18th_mapcontest_gp_sub1_v3.json",
-        priority: 2,
-        importance: 2,
-      },
-    ],
+    baseName: "18th_mapcontest_gp",
   },
 ];
 
@@ -205,63 +160,46 @@ interface MercClickResult {
 let xyClickResult: XYClickResult | null = null;
 let mercClickResult: MercClickResult | null = null;
 
-// ─── Fetch helpers ───────────────────────────────────────────────────────────
-
-async function fetchJSON(url: string): Promise<Compiled> {
-  const r = await fetch(url);
-  const ct = r.headers.get("content-type") ?? "";
-  if (!r.ok || !ct.includes("json")) {
-    throw new Error(`Failed to fetch ${url}: ${r.status} (${ct})`);
-  }
-  return r.json();
-}
-
 // ─── Load group ──────────────────────────────────────────────────────────────
 
 async function loadGroup(def: MapGroupDef, ver: FormatVer): Promise<LoadedGroup> {
-  const mainPath = ver === "v2" ? def.mainV2 : def.mainV3;
-  const mainCompiled = await fetchJSON(mainPath);
-
-  const subCompiledList: Compiled[] = [];
-  for (const sub of def.subMaps) {
-    subCompiledList.push(await fetchJSON(ver === "v2" ? sub.v2 : sub.v3));
+  const path = `../tests/mapdata/${def.baseName}_${ver}.json`;
+  const r = await fetch(path);
+  if (!r.ok) {
+    throw new Error(`Failed to fetch ${path}: ${r.status}`);
   }
-
-  // Build MapData
-  const mapData: MapData = {
-    compiled: mainCompiled,
-    sub_maps: def.subMaps.map((sub, i) => ({
-      compiled: subCompiledList[i],
-      priority: sub.priority,
-      importance: sub.importance,
-    })),
-  };
+  const mapData: MapData = await r.json();
 
   const mapTransform = new MapTransform();
   mapTransform.setMapData(mapData);
 
   // Main TIN wh
-  const wh = (mainCompiled.wh ?? [512, 512]) as [number, number];
+  const wh = ((mapData.compiled as any).wh ?? [512, 512]) as [number, number];
+
+  // Sub-map info derived from mapData
+  const subInfos: SubInfo[] = (mapData.sub_maps ?? []).map(s => ({
+    priority: s.priority,
+    importance: s.importance,
+  }));
 
   // Build xyBounds and mercBounds for each sub
   const xyBoundsPerSub: Pos[][] = [];
   const mercBoundsPerSub: Pos[][] = [];
 
-  for (let i = 0; i < def.subMaps.length; i++) {
-    const subCompiled = subCompiledList[i];
+  for (let i = 0; i < subInfos.length; i++) {
+    const subCompiled = mapData.sub_maps![i].compiled;
     const rawBounds: number[][] = (subCompiled as any).bounds ?? [];
 
     // XY bounds (close the polygon)
     const xyBounds = [...rawBounds, rawBounds[0]] as Pos[];
     xyBoundsPerSub.push(xyBounds);
 
-    // Merc bounds: transform each corner
+    // Merc bounds: transform each corner using the sub-map layer transform
+    const subT = mapTransform.getLayerTransform(i + 1);
     const mercBounds: Pos[] = xyBounds.map(xy => {
-      // Use sub TIN directly for transform
-      const subMapTransform = new MapTransform();
-      subMapTransform.setMapData({ compiled: subCompiledList[i] });
-      const merc = subMapTransform.xy2Merc(xy);
-      return merc !== false ? merc as Pos : xy as Pos;
+      if (!subT) return xy as Pos;
+      const merc = subT.transform(xy, false);
+      return merc ? merc as Pos : xy as Pos;
     });
     mercBoundsPerSub.push(mercBounds);
   }
@@ -293,9 +231,7 @@ async function loadGroup(def: MapGroupDef, ver: FormatVer): Promise<LoadedGroup>
 
   return {
     mapTransform,
-    mainCompiled,
-    subCompiledList,
-    subDefs: def.subMaps,
+    subInfos,
     wh,
     mainMercBounds,
     xyBoundsPerSub,
@@ -394,7 +330,7 @@ function drawXY(canv: HTMLCanvasElement) {
   {
     const mainT = grp.mapTransform.getLayerTransform(0);
     if (mainT) drawTriangleNet(ctx, mainT, vp, zm, "#1a2744", false);
-    for (let i = 0; i < grp.subDefs.length; i++) {
+    for (let i = 0; i < grp.subInfos.length; i++) {
       const subT = grp.mapTransform.getLayerTransform(i + 1);
       if (subT) drawTriangleNet(ctx, subT, vp, zm, LAYER_COLORS[i] ?? "#999", false);
     }
@@ -404,7 +340,7 @@ function drawXY(canv: HTMLCanvasElement) {
   for (let i = 0; i < grp.xyBoundsPerSub.length; i++) {
     const bounds = grp.xyBoundsPerSub[i];
     const color = LAYER_COLORS[i] ?? "#999";
-    const def = grp.subDefs[i];
+    const info = grp.subInfos[i];
 
     ctx.strokeStyle = color;
     ctx.lineWidth = 2;
@@ -427,7 +363,7 @@ function drawXY(canv: HTMLCanvasElement) {
     ctx.textAlign = "center";
     ctx.fillText(`${LAYER_LABELS[i]}`, lcx, lcy);
     ctx.font = "10px sans-serif";
-    ctx.fillText(`pri=${def.priority} imp=${def.importance}`, lcx, lcy + 13);
+    ctx.fillText(`pri=${info.priority} imp=${info.importance}`, lcx, lcy + 13);
     ctx.textAlign = "left";
   }
 
@@ -524,7 +460,7 @@ function drawMerc(canv: HTMLCanvasElement) {
   {
     const mainT = grp.mapTransform.getLayerTransform(0);
     if (mainT) drawTriangleNet(ctx, mainT, vp, zm, "#1a2744", true);
-    for (let i = 0; i < grp.subDefs.length; i++) {
+    for (let i = 0; i < grp.subInfos.length; i++) {
       const subT = grp.mapTransform.getLayerTransform(i + 1);
       if (subT) drawTriangleNet(ctx, subT, vp, zm, LAYER_COLORS[i] ?? "#999", true);
     }
@@ -534,7 +470,7 @@ function drawMerc(canv: HTMLCanvasElement) {
   for (let i = 0; i < grp.mercBoundsPerSub.length; i++) {
     const bounds = grp.mercBoundsPerSub[i];
     const color = LAYER_COLORS[i] ?? "#999";
-    const def = grp.subDefs[i];
+    const info = grp.subInfos[i];
 
     ctx.strokeStyle = color;
     ctx.lineWidth = 2;
@@ -557,7 +493,7 @@ function drawMerc(canv: HTMLCanvasElement) {
     ctx.textAlign = "center";
     ctx.fillText(`${LAYER_LABELS[i]}`, lcx, lcy);
     ctx.font = "10px sans-serif";
-    ctx.fillText(`pri=${def.priority} imp=${def.importance}`, lcx, lcy + 13);
+    ctx.fillText(`pri=${info.priority} imp=${info.importance}`, lcx, lcy + 13);
     ctx.textAlign = "left";
   }
 
@@ -609,7 +545,7 @@ async function loadAndRender() {
     buildViewports(grp);
     zoomXY = initZoom();
     zoomMerc = initZoom();
-    statusEl.textContent = `${def.label} [${currentVer.toUpperCase()}] — ${def.subMaps.length} submaps`;
+    statusEl.textContent = `${def.label} [${currentVer.toUpperCase()}] — ${grp.subInfos.length} submaps`;
     updateLegend();
     redraw();
   } catch (e: any) {
@@ -624,9 +560,9 @@ function updateLegend() {
   const grp = currentGroup;
   const rows: string[] = [
     `<span style="color:#1a2744;font-weight:bold">■ Main TIN</span>: メイン（全域フォールバック）`,
-    ...grp.subDefs.map((def, i) => {
+    ...grp.subInfos.map((info, i) => {
       const c = LAYER_COLORS[i] ?? "#999";
-      return `<span style="color:${c};font-weight:bold">■ ${LAYER_LABELS[i]}</span>: priority=${def.priority}, importance=${def.importance}`;
+      return `<span style="color:${c};font-weight:bold">■ ${LAYER_LABELS[i]}</span>: priority=${info.priority}, importance=${info.importance}`;
     }),
     "<hr style='border:none;border-top:1px solid #ddd;margin:4px 0'>",
     "<b>XY クリック</b>: 選択されたレイヤーで merc 変換 → 右パネルに表示",
@@ -694,8 +630,8 @@ function handleXYClick(e: MouseEvent) {
     const [layerIdx, merc] = result;
     xyClickResult = { xy: worldPos, layerIdx, merc: merc as Pos };
     const layerName = layerIdx === 0 ? "Main" : LAYER_LABELS[layerIdx - 1];
-    const def = layerIdx > 0 ? currentGroup.subDefs[layerIdx - 1] : null;
-    statusEl.textContent = `XY→Merc: ${layerName}${def ? ` (pri=${def.priority} imp=${def.importance})` : ""} → (${merc[0].toFixed(0)}, ${merc[1].toFixed(0)})`;
+    const info = layerIdx > 0 ? currentGroup.subInfos[layerIdx - 1] : null;
+    statusEl.textContent = `XY→Merc: ${layerName}${info ? ` (pri=${info.priority} imp=${info.importance})` : ""} → (${merc[0].toFixed(0)}, ${merc[1].toFixed(0)})`;
   }
   mercClickResult = null;
   redraw();
