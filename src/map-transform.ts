@@ -44,9 +44,14 @@ export class MapTransform {
     mainTin.setCompiled(mapData.compiled);
     this.mainTin = mainTin;
 
-    // _maxxy を計算（maxZoom が指定されている場合）
+    // _maxxy を計算
+    // 優先順位: MapData.maxZoom > compiled.wh からの自動計算
     if (mapData.maxZoom !== undefined) {
       this._maxxy = Math.pow(2, mapData.maxZoom) * TILE_SIZE;
+    } else if (mapData.compiled.wh) {
+      const maxDim = Math.max(mapData.compiled.wh[0], mapData.compiled.wh[1]);
+      const maxZoom = Math.ceil(Math.log2(maxDim / TILE_SIZE));
+      this._maxxy = Math.pow(2, maxZoom) * TILE_SIZE;
     }
 
     // sub_maps を構築
@@ -389,9 +394,35 @@ export class MapTransform {
   private _assertMaxxy(): void {
     if (this._maxxy === 0) {
       throw new Error(
-        "MapData.maxZoom must be set for viewpoint conversion (xy2SysCoord / sysCoord2Xy)"
+        "MapData.maxZoom or compiled.wh must be set for viewpoint conversion (xy2SysCoord / sysCoord2Xy)"
       );
     }
+  }
+
+  /**
+   * レイヤーインデックスに対応する Transform インスタンスを返す（三角網描画などの用途）
+   *
+   * @param idx - 0 = メイン TIN、1以上 = sub_maps[idx-1]
+   * @returns 対応する Transform、または範囲外の場合は null
+   */
+  getLayerTransform(idx: number): Transform | null {
+    if (idx === 0) return this.mainTin;
+    const sub = this.subTins[idx - 1];
+    return sub ? sub.tin : null;
+  }
+
+  /** レイヤー数を返す（メイン + sub 数） */
+  get layerCount(): number {
+    return 1 + this.subTins.length;
+  }
+
+  /**
+   * viewpoint 変換に使用する最大ピクセル幅（2^maxZoom × 256）
+   * stateToViewpoint / viewpointToState で zoom ↔ scale 変換に使用する
+   * zoom = log2(scale × maxxy / 256) の関係
+   */
+  get maxxy(): number {
+    return this._maxxy;
   }
 
   /** priority 降順でソートした [index, tin, isMain] の配列を返す */

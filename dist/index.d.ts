@@ -159,6 +159,10 @@ export declare class MapTransform {
      * メルカトル座標 → ピクセル座標（複数レイヤー結果）
      * histmap_tin.ts merc2XyAsync_returnLayer() の同期版
      *
+     * 現在は MaplatCore の仕様に合わせ、最大2レイヤーまで返す。
+     * 3レイヤー以上返したい場合は、下記の .slice(0, 2) および .filter(i < 2) の
+     * 上限値を増やすか、引数で上限を指定できるようにすること。
+     *
      * @param merc - メルカトル座標 [x, y]
      * @returns 最大2要素の配列。各要素は [レイヤーインデックス, ピクセル座標] または undefined
      */
@@ -201,6 +205,21 @@ export declare class MapTransform {
     static sysCoord2Xy(sysCoord: number[], maxxy: number): number[];
     private _assertMapData;
     private _assertMaxxy;
+    /**
+     * レイヤーインデックスに対応する Transform インスタンスを返す（三角網描画などの用途）
+     *
+     * @param idx - 0 = メイン TIN、1以上 = sub_maps[idx-1]
+     * @returns 対応する Transform、または範囲外の場合は null
+     */
+    getLayerTransform(idx: number): Transform | null;
+    /** レイヤー数を返す（メイン + sub 数） */
+    get layerCount(): number;
+    /**
+     * viewpoint 変換に使用する最大ピクセル幅（2^maxZoom × 256）
+     * stateToViewpoint / viewpointToState で zoom ↔ scale 変換に使用する
+     * zoom = log2(scale × maxxy / 256) の関係
+     */
+    get maxxy(): number;
     /** priority 降順でソートした [index, tin, isMain] の配列を返す */
     private _getTinsSortedByPriority;
     /** メイン TIN + 全 sub TIN を index 付きで返す */

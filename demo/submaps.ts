@@ -13,7 +13,7 @@
  */
 
 import { MapTransform } from "../src/index.ts";
-import type { Compiled, MapData } from "../src/index.ts";
+import type { Compiled, MapData, Transform } from "../src/index.ts";
 
 // ─── 型 ──────────────────────────────────────────────────────────────────────
 
@@ -313,6 +313,45 @@ function buildViewports(grp: LoadedGroup) {
   vpMerc = new Viewport([[minX, minY], [maxX, maxY]], true); // Y: up (flip)
 }
 
+// ─── Triangle net helper ─────────────────────────────────────────────────────
+
+/**
+ * TIN の三角網を薄く描画する
+ * @param backward - false=XY空間（forw TIN）, true=Merc空間（bakw TIN）
+ */
+function drawTriangleNet(
+  ctx: CanvasRenderingContext2D,
+  transform: Transform,
+  vp: Viewport,
+  zm: ZoomState,
+  color: string,
+  backward: boolean
+): void {
+  const tins = backward ? transform.tins?.bakw : transform.tins?.forw;
+  if (!tins) return;
+
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 0.5;
+  ctx.globalAlpha = 0.2;
+  ctx.beginPath();
+
+  for (const feature of tins.features) {
+    const coords = (feature.geometry as { coordinates: number[][][] }).coordinates[0];
+    if (coords.length < 3) continue;
+    const [x0, y0] = vp.toCanvas(coords[0] as Pos, zm);
+    const [x1, y1] = vp.toCanvas(coords[1] as Pos, zm);
+    const [x2, y2] = vp.toCanvas(coords[2] as Pos, zm);
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.closePath();
+  }
+
+  ctx.stroke();
+  ctx.restore();
+}
+
 // ─── Drawing ─────────────────────────────────────────────────────────────────
 
 function drawXY(canv: HTMLCanvasElement) {
@@ -349,6 +388,16 @@ function drawXY(canv: HTMLCanvasElement) {
     ctx.fillStyle = "#1a274488";
     ctx.font = "bold 11px sans-serif";
     ctx.fillText("Main TIN", cx + 4, cy + 14);
+  }
+
+  // 三角網（薄く重ねて表示）
+  {
+    const mainT = grp.mapTransform.getLayerTransform(0);
+    if (mainT) drawTriangleNet(ctx, mainT, vp, zm, "#1a2744", false);
+    for (let i = 0; i < grp.subDefs.length; i++) {
+      const subT = grp.mapTransform.getLayerTransform(i + 1);
+      if (subT) drawTriangleNet(ctx, subT, vp, zm, LAYER_COLORS[i] ?? "#999", false);
+    }
   }
 
   // Sub-maps bounds
@@ -469,6 +518,16 @@ function drawMerc(canv: HTMLCanvasElement) {
     ctx.fillStyle = "#1a274488";
     ctx.font = "bold 11px sans-serif";
     ctx.fillText("Main TIN", lx + 4, ly + 14);
+  }
+
+  // 三角網（薄く重ねて表示）
+  {
+    const mainT = grp.mapTransform.getLayerTransform(0);
+    if (mainT) drawTriangleNet(ctx, mainT, vp, zm, "#1a2744", true);
+    for (let i = 0; i < grp.subDefs.length; i++) {
+      const subT = grp.mapTransform.getLayerTransform(i + 1);
+      if (subT) drawTriangleNet(ctx, subT, vp, zm, LAYER_COLORS[i] ?? "#999", true);
+    }
   }
 
   // Sub-maps merc bounds

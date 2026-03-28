@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MaplatTransform — Map Sync Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Helvetica Neue", Arial, sans-serif; background: #eef0f4; color: #222; }
+
+    header {
+      background: #1a2744;
+      color: #fff;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    header h1 { font-size: 15px; white-space: nowrap; }
+
+    .ctrl-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1; }
+
+    .btn-group { display: flex; gap: 3px; }
+    .ver-btn {
+      padding: 5px 13px;
+      border: 1.5px solid rgba(255,255,255,0.3);
+      border-radius: 4px;
+      background: transparent;
+      color: #fff;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .ver-btn:hover { background: rgba(255,255,255,0.12); }
+    .ver-btn.active { background: #c0392b; border-color: #c0392b; }
+
+    .back-link {
+      font-size: 12px;
+      color: #aac;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .back-link:hover { color: #fff; }
+
+    .op-hint {
+      font-size: 11px;
+      color: #8aadcc;
+      padding: 5px 20px;
+      background: #162037;
+      text-align: center;
+      letter-spacing: 0.02em;
+    }
+
+    .main-area {
+      display: flex;
+      gap: 16px;
+      padding: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .panel-wrap {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .panel-wrap h2 {
+      font-size: 13px;
+      color: #1a2744;
+      text-align: center;
+    }
+
+    canvas {
+      display: block;
+      border-radius: 6px;
+      border: 1px solid #dde;
+    }
+
+    .info-box {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+      padding: 14px 20px;
+      margin: 0 16px 16px;
+      font-size: 13px;
+      line-height: 1.8;
+    }
+    .info-box p { color: #444; }
+    .info-box strong { color: #1a2744; }
+
+    #error-msg {
+      color: #c0392b;
+      font-size: 13px;
+      padding: 4px 20px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="../index.html" class="back-link">← デモ一覧</a>
+    <h1>MaplatTransform — Map Sync Demo</h1>
+    <div class="ctrl-row">
+      <div class="btn-group">
+        <button id="btn-v2" class="ver-btn active">v2</button>
+        <button id="btn-v3" class="ver-btn">v3</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="op-hint">
+    操作: ホイール = ズーム　｜　ドラッグ = パン　｜　Shift＋ドラッグ = 回転（中心基準）
+  </div>
+
+  <div id="error-msg"></div>
+
+  <div class="main-area">
+    <div class="panel-wrap">
+      <h2>館林御城図</h2>
+      <canvas id="canvas-0" width="500" height="500"></canvas>
+    </div>
+    <div class="panel-wrap">
+      <h2>館林城下町図</h2>
+      <canvas id="canvas-1" width="500" height="500"></canvas>
+    </div>
+  </div>
+
+  <div class="info-box">
+    <p>
+      <strong>処理3・4 — ビューポート同期デモ</strong>
+    </p>
+    <p>
+      片方の地図をズーム・パン・回転すると、もう一方の地図に位置・縮尺・向きが自動的に伝搬します。<br>
+      <strong>viewpoint2Mercs</strong>（操作側: XY → TIN → EPSG:3857 5点）と
+      <strong>mercs2Viewpoint</strong>（相手側: EPSG:3857 5点 → TIN逆変換 → Viewpoint）を使用。<br>
+      破線は各地図のEnvelope（外周）、薄い線は三角網（TIN）を示します。<br>
+      中央の円と線は画面の真上方向を示す基準で、ズーム・パン・回転しても画面固定で表示されます。
+    </p>
+  </div>
+
+  <script type="module" src="./mapsync.ts"></script>
+</body>
+</html>

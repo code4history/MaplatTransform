@@ -52,6 +52,7 @@ export default defineConfig({
         index:    resolve(__dirname, 'index.html'),
         singlemap: resolve(__dirname, 'demo/singlemap.html'),
         submaps:   resolve(__dirname, 'demo/submaps.html'),
+        mapsync:   resolve(__dirname, 'demo/mapsync.html'),
       },
     },
   },
