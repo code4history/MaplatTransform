@@ -2,9 +2,9 @@
 <h1 align="center">MaplatTransform</h1>
 
 <p align="center">
-  [![CI](https://github.com/code4history/MaplatTransform/actions/workflows/test.yml/badge.svg)](https://github.com/code4history/MaplatTransform/actions/workflows/test.yml)
-  [![npm version](https://img.shields.io/npm/v/@maplat/transform)](https://www.npmjs.com/package/@maplat/transform)
-  [![License](https://img.shields.io/npm/l/@maplat/transform)](LICENSE)
+  <a href="https://github.com/code4history/MaplatTransform/actions/workflows/test.yml"><img src="https://github.com/code4history/MaplatTransform/actions/workflows/test.yml/badge.svg" alt="CI" /></a>
+  <a href="https://www.npmjs.com/package/@maplat/transform"><img src="https://img.shields.io/npm/v/@maplat/transform" alt="npm version" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/npm/l/@maplat/transform" alt="License" /></a>
 </p>
 
 <!-- SECTION 2: Elevator Pitch -->
