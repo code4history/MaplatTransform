@@ -1,0 +1,3 @@
+- [ ] Install `vite@^6` and `vitest@^3` <!-- id: 1 -->
+- [ ] Verify `pnpm run test` passes after downgrade <!-- id: 2 -->
+- [ ] Verify `pnpm run build` passes after downgrade <!-- id: 3 -->

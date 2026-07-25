@@ -1,0 +1,4 @@
+- [x] Check if `dist/package.json` exists and inspect its content <!-- id: 0 -->
+- [x] Verify `vite.config.ts` build settings for `package.json` generation/copying <!-- id: 1 -->
+- [x] Ensure `name` field in any distributed `package.json` is `@maplat/transform` <!-- id: 2 -->
+- [x] Verify `npm pack` content <!-- id: 3 -->
