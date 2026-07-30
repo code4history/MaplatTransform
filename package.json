@@ -17,8 +17,8 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "browser": "./dist/maplat_transform.umd.js",
       "import": "./dist/maplat_transform.js",
+      "browser": "./dist/maplat_transform.umd.js",
       "default": "./dist/maplat_transform.js"
     }
   },
