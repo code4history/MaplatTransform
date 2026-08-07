@@ -16,8 +16,8 @@ importers:
         specifier: ^9.39.2
         version: 9.39.2
       '@maplat/tin':
-        specifier: 0.14.0
-        version: 0.14.0
+        specifier: 1.0.0-rc1
+        version: 1.0.0-rc1
       '@types/geojson':
         specifier: ^7946.0.16
         version: 7946.0.16
@@ -384,12 +384,12 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@maplat/tin@0.14.0':
-    resolution: {integrity: sha512-Zr92253huIlSYuMElpd2BqjFmTw6xJ5X+jqMJgTX8QhDHBZliRWXwDjkyoalG1pTEmFtjDSTFLWBJTQv7d/EpA==}
+  '@maplat/tin@1.0.0-rc1':
+    resolution: {integrity: sha512-ZSo+JzNd53hFvOGDiMBVU0YdT8ht17O+w1ZQcpViBUaAkzRFtYfBzFRvLuVuCdGZ8tWmgRFfgAbKbJoXtpBHPw==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@maplat/transform@0.5.0':
-    resolution: {integrity: sha512-D6BAjUhoEuRCQFWA1EUninevNPCNLOaCO17ng5ZjyLrUQ93b/imWJkS7ac0uav3t0JNqhsQ2Ul21oADcC4X6Hw==}
+  '@maplat/transform@1.0.0-rc1':
+    resolution: {integrity: sha512-+FDUFP4HEeNMomKbmYbdX6pEfmCfKU23a9tTWK+VbEyOdH7J/RPnFrnlAjpBXEjptNuwIobaZniWPQ6LvIpTfg==}
     engines: {node: '>=20', pnpm: '>=9'}
 
   '@microsoft/api-extractor-model@7.33.5':
@@ -2400,14 +2400,14 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@maplat/tin@0.14.0':
+  '@maplat/tin@1.0.0-rc1':
     dependencies:
-      '@maplat/transform': 0.5.0
+      '@maplat/transform': 1.0.0-rc1
       '@turf/turf': 7.3.1
       delaunator: 5.1.0
       robust-predicates: 3.0.2
 
-  '@maplat/transform@0.5.0':
+  '@maplat/transform@1.0.0-rc1':
     dependencies:
       '@turf/turf': 7.3.1
 
