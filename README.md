@@ -33,7 +33,7 @@ MaplatTransform is open-source under the Apache License 2.0 (from version 0.5.3)
 <!-- SECTION 5: Quick Start -->
 ## Quick Start
 
-> Release-dependent information (ADR-0012). The version `0.5.3` below is the
+> Release-dependent information (ADR-0012). The version `1.0.0-rc1` below is the
 > current release; update it on each new release.
 
 ### Install
@@ -71,7 +71,7 @@ const restored = transform.transform(transformed, true);
 ### CDN (jsDelivr)
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@maplat/transform@0.5.3/dist/maplat_transform.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@maplat/transform@1.0.0-rc1/dist/maplat_transform.umd.js"></script>
 ```
 
 ### MapTransform usage (Processings 2–4)
@@ -169,7 +169,7 @@ limitations under the License.
 
 > **Past versions**: Versions before 0.5.3 were distributed under the
 > Maplat Limited License 1.1. The license restoration to Apache 2.0 takes
-> effect from version 0.5.3 onward. Earlier versions available on npmjs.com
+> effect from version 1.0.0-rc1 onward. Earlier versions available on npmjs.com
 > remain under their original limited-license terms.
 
 <!-- SECTION 11: Contributors / Sponsors -->
