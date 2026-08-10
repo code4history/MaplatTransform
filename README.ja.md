@@ -3,7 +3,6 @@
 
 <p align="center">
   <a href="https://github.com/code4history/MaplatTransform/actions/workflows/test.yml"><img src="https://github.com/code4history/MaplatTransform/actions/workflows/test.yml/badge.svg" alt="CI" /></a>
-  <a href="https://www.npmjs.com/package/@maplat/transform"><img src="https://img.shields.io/npm/v/@maplat/transform" alt="npm version" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/npm/l/@maplat/transform" alt="License" /></a>
 </p>
 
@@ -32,17 +31,21 @@ MaplatTransform は Apache License 2.0（バージョン 0.5.3 以降）のオ�
 <!-- SECTION 5: Quick Start -->
 ## クイックスタート
 
-> 特定リリースに紐づく情報（ADR-0012）。下記のバージョン `1.0.0-rc1` は現在の
-> リリース値です。リリースごとに更新してください。
+<!-- release-pinned:start -->
+> **現在のリリース: `1.0.0-rc1`**（リリース候補）。このブロックは本リポジトリで唯一
+> リリース版数を持つ場所です（ADR-0012）。ブロックの外はすべて 1.0 正式版を前提に
+> 書かれています。
+> npm: [`@maplat/transform`](https://www.npmjs.com/package/@maplat/transform)
+> [![npm rc](https://img.shields.io/npm/v/@maplat/transform/rc)](https://www.npmjs.com/package/@maplat/transform)
 
 ### インストール
 
 ```bash
 # pnpm（推奨）
-pnpm add @maplat/transform
+pnpm add @maplat/transform@rc
 
 # npm
-npm install @maplat/transform
+npm install @maplat/transform@rc
 ```
 
 ### 最小利用例
@@ -90,6 +93,7 @@ const restored = transform.transform(transformed, true);
 ```bash
 pnpm test
 ```
+<!-- release-pinned:end -->
 
 <!-- SECTION 6: Prerequisites -->
 ## 動作環境
