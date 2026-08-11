@@ -3,7 +3,6 @@
 
 <p align="center">
   <a href="https://github.com/code4history/MaplatTransform/actions/workflows/test.yml"><img src="https://github.com/code4history/MaplatTransform/actions/workflows/test.yml/badge.svg" alt="CI" /></a>
-  <a href="https://www.npmjs.com/package/@maplat/transform"><img src="https://img.shields.io/npm/v/@maplat/transform" alt="npm version" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/npm/l/@maplat/transform" alt="License" /></a>
 </p>
 
@@ -33,17 +32,21 @@ MaplatTransform is open-source under the Apache License 2.0 (from version 0.5.3)
 <!-- SECTION 5: Quick Start -->
 ## Quick Start
 
-> Release-dependent information (ADR-0012). The version `0.5.3` below is the
-> current release; update it on each new release.
+<!-- release-pinned:start -->
+> **Current release: `1.0.0-rc1`** — a release candidate. This block is the only place in
+> this repository that carries a release version (ADR-0012); everything outside it is
+> written against the 1.0 release.
+> npm: [`@maplat/transform`](https://www.npmjs.com/package/@maplat/transform)
+> [![npm rc](https://img.shields.io/npm/v/@maplat/transform/rc)](https://www.npmjs.com/package/@maplat/transform)
 
 ### Install
 
 ```bash
 # pnpm (recommended)
-pnpm add @maplat/transform
+pnpm add @maplat/transform@rc
 
 # npm
-npm install @maplat/transform
+npm install @maplat/transform@rc
 ```
 
 ### Minimal usage
@@ -71,7 +74,7 @@ const restored = transform.transform(transformed, true);
 ### CDN (jsDelivr)
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@maplat/transform@0.5.3/dist/maplat_transform.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@maplat/transform@1.0.0-rc1/dist/maplat_transform.umd.js"></script>
 ```
 
 ### MapTransform usage (Processings 2–4)
@@ -93,6 +96,7 @@ synchronization, see the
 ```bash
 pnpm test
 ```
+<!-- release-pinned:end -->
 
 <!-- SECTION 6: Prerequisites -->
 ## Prerequisites
@@ -123,6 +127,9 @@ repository; the Sister repositories table below is the public substitute)*
 | [MaplatTin](https://github.com/code4history/MaplatTin) | Apache 2.0 | `@maplat/tin` | TIN conversion |
 | [MaplatTransform](https://github.com/code4history/MaplatTransform) | Apache 2.0 | `@maplat/transform` | Coordinate transform |
 | [MaplatEditor](https://github.com/code4history/MaplatEditor) | Apache 2.0 | — | Data authoring tool (desktop) |
+| [Chuci](https://github.com/code4history/Chuci) | MIT | `@c4h/chuci` | Multimedia swiper & viewer Web Components |
+| [Quyuan](https://github.com/code4history/Quyuan) | MIT | `@c4h/quyuan` | GeoJSON template engine + multimedia viewer Web Components |
+| [Weiwudi](https://github.com/code4history/Weiwudi) | MIT | `@c4h/weiwudi` | Service Worker for tile cache |
 
 > MaplatEditor is the data authoring tool used to create the maps and POIs
 > that the viewers above render. The Maplat ecosystem is end-to-end:
@@ -169,7 +176,7 @@ limitations under the License.
 
 > **Past versions**: Versions before 0.5.3 were distributed under the
 > Maplat Limited License 1.1. The license restoration to Apache 2.0 takes
-> effect from version 0.5.3 onward. Earlier versions available on npmjs.com
+> effect from version 1.0.0-rc1 onward. Earlier versions available on npmjs.com
 > remain under their original limited-license terms.
 
 <!-- SECTION 11: Contributors / Sponsors -->
