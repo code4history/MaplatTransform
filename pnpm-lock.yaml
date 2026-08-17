@@ -15,7 +15,7 @@ importers:
   .:
     dependencies:
       '@turf/turf':
-        specifier: ^7.3.1
+        specifier: ^7.4.0
         version: 7.4.0
     devDependencies:
       '@eslint/js':
@@ -55,7 +55,7 @@ importers:
         specifier: ^30.0.1
         version: 30.0.1
       prettier:
-        specifier: ^3.7.4
+        specifier: ^3.9.6
         version: 3.9.6
       typescript:
         specifier: ^5.9.3
