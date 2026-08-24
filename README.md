@@ -33,20 +33,20 @@ MaplatTransform is open-source under the Apache License 2.0 (from version 0.5.3)
 ## Quick Start
 
 <!-- release-pinned:start -->
-> **Current release: `1.0.0-rc1`** — a release candidate. This block is the only place in
+> **Current release: `1.0.0`**. This block is the only place in
 > this repository that carries a release version (ADR-0012); everything outside it is
 > written against the 1.0 release.
 > npm: [`@maplat/transform`](https://www.npmjs.com/package/@maplat/transform)
-> [![npm rc](https://img.shields.io/npm/v/@maplat/transform/rc)](https://www.npmjs.com/package/@maplat/transform)
+> [![npm](https://img.shields.io/npm/v/@maplat/transform)](https://www.npmjs.com/package/@maplat/transform)
 
 ### Install
 
 ```bash
 # pnpm (recommended)
-pnpm add @maplat/transform@rc
+pnpm add @maplat/transform
 
 # npm
-npm install @maplat/transform@rc
+npm install @maplat/transform
 ```
 
 ### Minimal usage
@@ -74,7 +74,7 @@ const restored = transform.transform(transformed, true);
 ### CDN (jsDelivr)
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@maplat/transform@1.0.0-rc1/dist/maplat_transform.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@maplat/transform@1.0.0/dist/maplat_transform.umd.js"></script>
 ```
 
 ### MapTransform usage (Processings 2–4)

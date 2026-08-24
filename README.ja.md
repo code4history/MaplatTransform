@@ -32,20 +32,20 @@ MaplatTransform は Apache License 2.0（バージョン 0.5.3 以降）のオ�
 ## クイックスタート
 
 <!-- release-pinned:start -->
-> **現在のリリース: `1.0.0-rc1`**（リリース候補）。このブロックは本リポジトリで唯一
+> **現在のリリース: `1.0.0`**。このブロックは本リポジトリで唯一
 > リリース版数を持つ場所です（ADR-0012）。ブロックの外はすべて 1.0 正式版を前提に
 > 書かれています。
 > npm: [`@maplat/transform`](https://www.npmjs.com/package/@maplat/transform)
-> [![npm rc](https://img.shields.io/npm/v/@maplat/transform/rc)](https://www.npmjs.com/package/@maplat/transform)
+> [![npm](https://img.shields.io/npm/v/@maplat/transform)](https://www.npmjs.com/package/@maplat/transform)
 
 ### インストール
 
 ```bash
 # pnpm（推奨）
-pnpm add @maplat/transform@rc
+pnpm add @maplat/transform
 
 # npm
-npm install @maplat/transform@rc
+npm install @maplat/transform
 ```
 
 ### 最小利用例
@@ -72,7 +72,7 @@ const restored = transform.transform(transformed, true);
 ### CDN（jsDelivr）
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@maplat/transform@1.0.0-rc1/dist/maplat_transform.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@maplat/transform@1.0.0/dist/maplat_transform.umd.js"></script>
 ```
 
 ### MapTransform の使用方法（処理2〜4）
