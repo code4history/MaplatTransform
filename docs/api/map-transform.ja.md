@@ -49,6 +49,22 @@ const mt = new MapTransform();
 - **パラメータ:** `merc` — EPSG:3857座標 `[x, y]`
 - **戻り値:** 最大2要素の配列。各要素は `[レイヤーインデックス, XY座標]` または `undefined`
 
+このメソッドは視点換算・一般座標変換用です（本図を常に候補に含めます）。GPS マーカーや POI ピンをどの層に描くかの判定には `merc2XyVisibleLayers` を使ってください。
+
+### `merc2XyVisibleLayers(merc: number[]): [number, number[]][]`
+
+EPSG:3857座標に対応し、他の層に覆われていない層の一覧を返します。GPS マーカー・POI ピンを描く層の選択に使います。
+
+1. 各層の TIN で逆変換し、sub_map は結果が自身の `xyBounds` 内に入る場合だけ対応層とします。本図（層 0）は常に候補とし、本図の紙の内外は**ここでは判定しません**（呼び出し側で除外します）。
+2. 対応層の座標が、より priority の高い sub_map の `xyBounds` 内にあれば「覆われている」とします。その sub_map 自身が当該座標に対応するかは関係しません。本図は priority 0 の sub_map にも覆われます。
+3. 同じ priority の sub_map どうしは互いを覆いません。
+4. 覆われていない対応層を importance 降順 → priority 降順 → 層番号昇順で並べ、上限を設けず**全件**返します。
+5. 覆われていない対応層が無ければ空配列（表現範囲外）を返します。`undefined` の要素は返しません。
+
+- **パラメータ:** `merc` — EPSG:3857座標 `[x, y]`
+- **戻り値:** `[レイヤーインデックス, XY座標]` の配列（0 件以上）
+- **例外:** `setMapData()` を呼ぶ前に実行した場合
+
 ### `viewpoint2Mercs(viewpoint: Viewpoint, size: [number, number]): number[][]`
 
 ピクセル空間のビューポートをEPSG:3857の5点に変換します（処理3）。

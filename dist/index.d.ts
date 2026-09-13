@@ -168,6 +168,25 @@ export declare class MapTransform {
      */
     merc2XyWithLayer(merc: number[]): ([number, number[]] | undefined)[];
     /**
+     * メルカトル座標 → 覆われていない対応層の一覧（GPS / POI の表示候補用）
+     *
+     * `merc2XyWithLayer` は視点換算・一般座標変換用で、本図を常に候補に含める。
+     * GPS マーカー・POI ピンをどの層に描くかの判定には本メソッドを使う（MaplatTransform#9）。
+     *
+     * 1. 各層の TIN で逆変換し、sub_map は自身の `xyBounds` 内に入るものだけを対応層とする。
+     *    本図（層 0）は紙の内外を判定せず常に対応層の候補とする（紙外の除外は呼び出し側が行う）
+     * 2. 対応層の座標が、より priority の高い sub_map の `xyBounds` 内なら覆われている。
+     *    その高 priority 層自身が当該地点に対応するかは関係しない。
+     *    本図は priority 0 の sub_map の `xyBounds` 内でも覆われている
+     * 3. 同じ priority の sub_map どうしは互いを覆わない
+     * 4. 覆われていない対応層を importance 降順 → priority 降順 → 層番号昇順で並べ、上限を切らずに全件返す
+     * 5. 覆われていない対応層が無ければ空配列（表現範囲外）。`undefined`（旧 hide 表現）は返さない
+     *
+     * @param merc - メルカトル座標 [x, y]
+     * @returns [レイヤーインデックス, ピクセル座標] の配列（0 件以上・上限なし）
+     */
+    merc2XyVisibleLayers(merc: number[]): [number, number[]][];
+    /**
      * メルカトル5点 → システム座標（複数レイヤー）
      * histmap_tin.ts mercs2SysCoordsAsync_multiLayer() の同期版
      *

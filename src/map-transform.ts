@@ -249,6 +249,59 @@ export class MapTransform {
   }
 
   /**
+   * メルカトル座標 → 覆われていない対応層の一覧（GPS / POI の表示候補用）
+   *
+   * `merc2XyWithLayer` は視点換算・一般座標変換用で、本図を常に候補に含める。
+   * GPS マーカー・POI ピンをどの層に描くかの判定には本メソッドを使う（MaplatTransform#9）。
+   *
+   * 1. 各層の TIN で逆変換し、sub_map は自身の `xyBounds` 内に入るものだけを対応層とする。
+   *    本図（層 0）は紙の内外を判定せず常に対応層の候補とする（紙外の除外は呼び出し側が行う）
+   * 2. 対応層の座標が、より priority の高い sub_map の `xyBounds` 内なら覆われている。
+   *    その高 priority 層自身が当該地点に対応するかは関係しない。
+   *    本図は priority 0 の sub_map の `xyBounds` 内でも覆われている
+   * 3. 同じ priority の sub_map どうしは互いを覆わない
+   * 4. 覆われていない対応層を importance 降順 → priority 降順 → 層番号昇順で並べ、上限を切らずに全件返す
+   * 5. 覆われていない対応層が無ければ空配列（表現範囲外）。`undefined`（旧 hide 表現）は返さない
+   *
+   * @param merc - メルカトル座標 [x, y]
+   * @returns [レイヤーインデックス, ピクセル座標] の配列（0 件以上・上限なし）
+   */
+  merc2XyVisibleLayers(merc: number[]): [number, number[]][] {
+    this._assertMapData();
+
+    const allTins = this._getAllTinsWithIndex();
+    const prio = (index: number): number =>
+      index === 0 ? 0 : (this.subTins[index - 1].priority ?? 0);
+    const imp = (index: number): number =>
+      index === 0 ? 0 : (this.subTins[index - 1].importance ?? 0);
+    const inBounds = (index: number, xy: number[]): boolean =>
+      index === 0 || booleanPointInPolygon(point(xy), this.subTins[index - 1].xyBounds);
+
+    // 規則 1: 対応層
+    const hits: { index: number; xy: number[] }[] = [];
+    for (const { index } of allTins) {
+      const xy = this._transformByIndex(merc, index, true);
+      if (xy !== false && inBounds(index, xy)) hits.push({ index, xy });
+    }
+
+    // 規則 2・3: より priority の高い sub_map の枠の中なら覆われている（その層の対応は問わない）
+    const isCovered = (hit: { index: number; xy: number[] }): boolean =>
+      allTins.some(
+        ({ index }) =>
+          index !== 0 &&
+          index !== hit.index &&
+          (prio(index) > prio(hit.index) || (hit.index === 0 && prio(index) === 0)) &&
+          inBounds(index, hit.xy)
+      );
+
+    // 規則 4・5: 一貫した比較器で並べ、上限を切らずに返す
+    return hits
+      .filter(hit => !isCovered(hit))
+      .sort((a, b) => imp(b.index) - imp(a.index) || prio(b.index) - prio(a.index) || a.index - b.index)
+      .map(hit => [hit.index, hit.xy] as [number, number[]]);
+  }
+
+  /**
    * メルカトル5点 → システム座標（複数レイヤー）
    * histmap_tin.ts mercs2SysCoordsAsync_multiLayer() の同期版
    *

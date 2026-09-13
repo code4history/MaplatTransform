@@ -49,6 +49,22 @@ Transform an EPSG:3857 coordinate to pixel coordinate across all applicable TIN 
 - **Parameters:** `merc` — EPSG:3857 coordinate `[x, y]`
 - **Returns:** Array of up to 2 elements; each is `[layerIndex, xyCoord]` or `undefined`
 
+This method is intended for viewpoint conversion and general coordinate transformation (it always keeps the main map as a candidate). To decide which layer a GPS marker or POI pin should be drawn on, use `merc2XyVisibleLayers`.
+
+### `merc2XyVisibleLayers(merc: number[]): [number, number[]][]`
+
+Return the layers that correspond to an EPSG:3857 coordinate and are not covered by another layer, for choosing where to draw GPS markers and POI pins.
+
+1. Each layer's TIN reverse-transforms the coordinate. A sub-map is a corresponding layer only when the result lies inside its own `xyBounds`. The main map (layer 0) is always a candidate; whether the result lies on the main map's paper is **not** checked here (the caller filters it).
+2. A corresponding layer is covered when its pixel coordinate lies inside the `xyBounds` of a sub-map with a higher priority, regardless of whether that sub-map itself corresponds to the coordinate. The main map is also covered by a priority-0 sub-map.
+3. Sub-maps with the same priority do not cover each other.
+4. The uncovered layers are sorted by importance (descending), then priority (descending), then layer index (ascending), and **all** of them are returned (no upper limit).
+5. If no uncovered layer exists, an empty array is returned (out of range). `undefined` placeholders are never returned.
+
+- **Parameters:** `merc` — EPSG:3857 coordinate `[x, y]`
+- **Returns:** Array (0 or more elements) of `[layerIndex, xyCoord]`
+- **Throws:** Error if `setMapData()` has not been called
+
 ### `viewpoint2Mercs(viewpoint: Viewpoint, size: [number, number]): number[][]`
 
 Convert a pixel-space viewport to five EPSG:3857 points (Processing 3).
