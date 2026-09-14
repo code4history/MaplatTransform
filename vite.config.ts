@@ -64,7 +64,7 @@ export default defineConfig({
     dts({
       outDir: 'dist',
       exclude: ['tests', 'demo', 'node_modules'],
-      rollupTypes: true,
+      bundleTypes: true,
       tsconfigPath: './tsconfig.json',
       logLevel: 'silent'
     })
