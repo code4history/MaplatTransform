@@ -56,7 +56,7 @@ Maplatで生成されたコンパイル済み変換定義をインポートし�
 
 ## エクスポートされる型
 
-- `PointSet`, `BiDirectionKey`, `WeightBufferBD`, `VertexMode`, `StrictMode`, `StrictStatus`, `YaxisMode`
+- `PointSet`, `BiDirectionKey`, `WeightBufferBD` (非推奨 — 2.00704 以降は未使用), `VertexMode`, `StrictMode`, `StrictStatus`, `YaxisMode`
 - `CentroidBD`, `TinsBD`, `KinksBD`, `VerticesParamsBD`, `IndexedTinsBD`
 - `Compiled`, `CompiledLegacy`
 - `Tins`, `Tri`, `PropertyTriKey`

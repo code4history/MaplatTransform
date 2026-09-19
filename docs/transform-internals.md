@@ -6,7 +6,7 @@ This note explains how the `Transform` class reconstructs its state from compile
 
 `restoreModernState()` normalizes every payload emitted by MaplatTin:
 
-1. **Weight buffers.** Older payloads may store vertex ids such as `cent0` or `edgeNode1`. Each key is normalized via `normalizeNodeKey()` so runtime lookups only see canonical ids.
+1. **Weight buffers.** The `weight_buffer` key stays required on compiled payloads (MaplatTin 2.00704+ always writes `{}`), but the reader ignores its value since format 2.00704.
 2. **Vertex tins.** The quadrilateral built from vertices `b0`–`b3` is regenerated twice (forward/backward) through `indexesToTri()`, ensuring consistent padding even when only serialized indices exist.
 3. **Strict status.** If `strict_status` is absent, the helper infers it from `kinks_points` (=> `strict_error`) or whether two tin sets were emitted (=> `loose`). Otherwise it assumes `strict`.
 4. **Bounds and metadata.** Bounds, centroid features, edge nodes, and optional `kinks_points` are packaged into a single `ModernStatePayload`. Missing bounds fall back to `[0, 0]` just like the legacy workflow.
@@ -27,10 +27,10 @@ When a compiled tin holds enough triangles (`gridNum >= 3`), the method builds t
 
 1. **Hit cache.** If state caching is enabled, the previously hit triangle is tested first.
 2. **Grid-assisted search.** When an index is available, the point is normalized to a grid cell and only the referenced triangles are tested.
-3. **Triangle interpolation.** Successful hits go through `transformTinArr()`, which computes barycentric weights and applies the weight buffer if present.
+3. **Triangle interpolation.** Successful hits go through `transformTinArr()`, which performs pure affine interpolation (barycentric coordinates). The `weight_buffer` is not read since format 2.00704.
 4. **Vertex fallback.** Points outside every triangle switch to `useVerticesArr()`, projecting the point onto the padded quadrilateral defined by `vertices_params`.
 
-Backward transforms mirror the same flow, but use the backward tins/vertices/weights and optionally apply the bounds check after interpolation.
+Backward transforms mirror the same flow, but use the backward tins/vertices and optionally apply the bounds check after interpolation.
 
 ## Mode & Axis Handling
 

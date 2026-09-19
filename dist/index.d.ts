@@ -22,6 +22,7 @@ export declare interface Compiled {
     version?: number;
     points: PointSet[];
     tins_points: (number | string)[][][];
+    /** 書き出し側（MaplatTin 2.00704 以降）は常に `{}` を書く。以前の MaplatTransform はこのキーが無いと `transform()` で TypeError になるため、省略してはならない。読み込み側は値を無視する */
     weight_buffer: WeightBufferBD;
     strict_status?: StrictStatus;
     centroid_point: Position[];
@@ -81,7 +82,7 @@ export declare type EdgeSetLegacy = {
     startEnd: Edge;
 };
 
-export declare const format_version = 2.00703;
+export declare const format_version = 2.00704;
 
 declare interface IndexedTins {
     gridNum: number;
@@ -381,6 +382,7 @@ export declare class Transform {
     static YAXIS_FOLLOW: "follow";
     static YAXIS_INVERT: "invert";
     points: PointSet[];
+    /** @deprecated 2.00704 以降、Transform はこのプロパティを設定も参照もしない。サブクラス（MaplatTin）は、旧 @maplat/transform と組まれたときの互換のため {} を入れる（t2 設計 §2.1） */
     pointsWeightBuffer?: WeightBufferBD;
     strict_status?: StrictStatus;
     vertices_params?: VerticesParamsBD;
@@ -459,12 +461,13 @@ export declare class Transform {
  * @param indexedTins インデックス付き三角形群（オプション）
  * @param verticesParams 頂点パラメータ（オプション）
  * @param centroid 重心点（オプション）
- * @param weightBuffer 重み付けバッファ（オプション）
+ * @param _weightBuffer 使われない（2.00704 以降は無視する。位置引数の互換のためだけに残す）
+ * @deprecated
  * @param stateTriangle 状態三角形（オプション）
  * @param stateSetFunc 状態設定関数（オプション）
  * @returns 変換後の座標
  */
-export declare function transformArr(point: Feature<Point>, tins: Tins, indexedTins?: IndexedTins, verticesParams?: VerticesParams, centroid?: Feature<Point>, weightBuffer?: WeightBuffer, stateTriangle?: Tri, stateSetFunc?: (tri?: Tri) => void): Position;
+export declare function transformArr(point: Feature<Point>, tins: Tins, indexedTins?: IndexedTins, verticesParams?: VerticesParams, centroid?: Feature<Point>, _weightBuffer?: WeightBuffer, stateTriangle?: Tri, stateSetFunc?: (tri?: Tri) => void): Position;
 
 export declare type Tri = Feature<Polygon, PropertiesTri>;
 
@@ -491,12 +494,15 @@ export declare interface Viewpoint {
     rotation: number;
 }
 
+/** @deprecated 2.00704 以降の MaplatTransform は重みを使わない（型の互換のためだけに残す） */
 declare type WeightBuffer = {
     [index: string]: number;
 };
 
 /**
  * Weight buffers indexed by node id for both directions.
+ *
+ * @deprecated 2.00704 以降の MaplatTransform は重みを使わない（型の互換のためだけに残す）
  */
 export declare type WeightBufferBD = {
     [key in BiDirectionKey]?: WeightBuffer;
