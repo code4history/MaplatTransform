@@ -53,6 +53,7 @@ export class Transform {
   static YAXIS_INVERT = "invert" as const;
 
   points: PointSet[] = [];
+  /** @deprecated 2.00704 以降、Transform はこのプロパティを設定も参照もしない。サブクラス（MaplatTin）は、旧 @maplat/transform と組まれたときの互換のため {} を入れる（t2 設計 §2.1） */
   pointsWeightBuffer?: WeightBufferBD;
   strict_status?: StrictStatus;
   vertices_params?: VerticesParamsBD;
@@ -115,7 +116,6 @@ export class Transform {
 
   private applyModernState(state: ModernStatePayload): void {
     this.points = state.points;
-    this.pointsWeightBuffer = state.pointsWeightBuffer;
     this.strict_status = state.strictStatus;
     this.vertices_params = state.verticesParams;
     this.centroid = state.centroid;
@@ -144,7 +144,6 @@ export class Transform {
     this.tins = state.tins;
     this.addIndexedTin();
     this.strict_status = state.strictStatus;
-    this.pointsWeightBuffer = state.pointsWeightBuffer;
     this.vertices_params = state.verticesParams;
     this.centroid = state.centroid;
     this.kinks = state.kinks;
@@ -301,9 +300,6 @@ export class Transform {
       ? this.vertices_params!.bakw
       : this.vertices_params!.forw;
     const centroid = backward ? this.centroid!.bakw : this.centroid!.forw;
-    const weightBuffer = backward
-      ? this.pointsWeightBuffer!.bakw
-      : this.pointsWeightBuffer!.forw;
     let stateTriangle = undefined,
       stateSetFunc = undefined;
     if (this.stateFull) {
@@ -323,7 +319,7 @@ export class Transform {
       indexedTins,
       verticesParams,
       centroid,
-      weightBuffer,
+      undefined,
       stateTriangle,
       stateSetFunc
     );

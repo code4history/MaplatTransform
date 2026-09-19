@@ -56,7 +56,7 @@ Perform coordinate transformation.
 
 ## Exported Types
 
-- `PointSet`, `BiDirectionKey`, `WeightBufferBD`, `VertexMode`, `StrictMode`, `StrictStatus`, `YaxisMode`
+- `PointSet`, `BiDirectionKey`, `WeightBufferBD` (deprecated — unused since 2.00704), `VertexMode`, `StrictMode`, `StrictStatus`, `YaxisMode`
 - `CentroidBD`, `TinsBD`, `KinksBD`, `VerticesParamsBD`, `IndexedTinsBD`
 - `Compiled`, `CompiledLegacy`
 - `Tins`, `Tri`, `PropertyTriKey`
