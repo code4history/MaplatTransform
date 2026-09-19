@@ -19,6 +19,8 @@ export type BiDirectionKey = "forw" | "bakw";
 
 /**
  * Weight buffers indexed by node id for both directions.
+ *
+ * @deprecated 2.00704 以降の MaplatTransform は重みを使わない（型の互換のためだけに残す）
  */
 export type WeightBufferBD = { [key in BiDirectionKey]?: WeightBuffer };
 
@@ -57,6 +59,7 @@ export interface Compiled {
   version?: number;
   points: PointSet[];
   tins_points: (number | string)[][][];
+  /** 書き出し側（MaplatTin 2.00704 以降）は常に `{}` を書く。以前の MaplatTransform はこのキーが無いと `transform()` で TypeError になるため、省略してはならない。読み込み側は値を無視する */
   weight_buffer: WeightBufferBD;
   strict_status?: StrictStatus;
   centroid_point: Position[];
@@ -90,7 +93,6 @@ export interface CompiledLegacy extends Compiled {
  */
 export interface ModernStatePayload {
   points: PointSet[];
-  pointsWeightBuffer: WeightBufferBD;
   strictStatus: StrictStatus;
   verticesParams: VerticesParamsBD;
   centroid: CentroidBD;
@@ -115,7 +117,6 @@ export interface LegacyStatePayload {
   tins: TinsBD;
   points: PointSet[];
   strictStatus?: StrictStatus;
-  pointsWeightBuffer: WeightBufferBD;
   verticesParams: VerticesParamsBD;
   centroid?: CentroidBD;
   kinks?: KinksBD;

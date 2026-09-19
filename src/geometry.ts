@@ -6,6 +6,7 @@ export type PropertyTriKey = "a" | "b" | "c";
 type PropertiesTri = { [key in PropertyTriKey]: PropertyTri };
 export type Tri = Feature<Polygon, PropertiesTri>;
 export type Tins = FeatureCollection<Polygon, PropertiesTri>;
+/** @deprecated 2.00704 以降の MaplatTransform は重みを使わない（型の互換のためだけに残す） */
 export type WeightBuffer = { [index: string]: number };
 export type VerticesParams = [number[], Tins[]?];
 export interface IndexedTins {
@@ -34,12 +35,12 @@ function hit(point: Feature<Point>, tins: Tins): Tri | undefined {
 
 /**
  * 三角形内の点の座標を、対応する三角形の座標系に変換する
+ * 三角形の頂点の重心座標による純アフィン補間（凸包外の扇形三角形では同じ式による外挿）
  * @param of 変換する点
  * @param tri 三角形
- * @param weightBuffer 重み付けバッファ（オプション）
  * @returns 変換後の座標
  */
-function transformTinArr(of: Feature<Point>, tri: Tri, weightBuffer: WeightBuffer | undefined) {
+function transformTinArr(of: Feature<Point>, tri: Tri) {
   const a = tri.geometry.coordinates[0][0];
   const b = tri.geometry.coordinates[0][1];
   const c = tri.geometry.coordinates[0][2];
@@ -52,26 +53,9 @@ function transformTinArr(of: Feature<Point>, tri: Tri, weightBuffer: WeightBuffe
   const ao = [o[0] - a[0], o[1] - a[1]];
   const abd = [bd[0] - ad[0], bd[1] - ad[1]];
   const acd = [cd[0] - ad[0], cd[1] - ad[1]];
-  let abv = (ac[1] * ao[0] - ac[0] * ao[1]) / (ab[0] * ac[1] - ab[1] * ac[0]);
-  let acv = (ab[0] * ao[1] - ab[1] * ao[0]) / (ab[0] * ac[1] - ab[1] * ac[0]);
+  const abv = (ac[1] * ao[0] - ac[0] * ao[1]) / (ab[0] * ac[1] - ab[1] * ac[0]);
+  const acv = (ab[0] * ao[1] - ab[1] * ao[0]) / (ab[0] * ac[1] - ab[1] * ac[0]);
 
-  // 重み付けがある場合は補正を行う
-  if (weightBuffer) {
-    const aW = weightBuffer[tri.properties.a.index];
-    const bW = weightBuffer[tri.properties.b.index];
-    const cW = weightBuffer[tri.properties.c.index];
-    let nabv;
-    if (abv < 0 || acv < 0 || 1 - abv - acv < 0) {
-      const normB = abv / (abv + acv);
-      const normC = acv / (abv + acv);
-      nabv = abv / bW / (normB / bW + normC / cW);
-      acv = acv / cW / (normB / bW + normC / cW);
-    } else {
-      nabv = abv / bW / (abv / bW + acv / cW + (1 - abv - acv) / aW);
-      acv = acv / cW / (abv / bW + acv / cW + (1 - abv - acv) / aW);
-    }
-    abv = nabv;
-  }
   return [
     abv * abd[0] + acv * acd[0] + ad[0],
     abv * abd[1] + acv * acd[1] + ad[1]
@@ -83,14 +67,12 @@ function transformTinArr(of: Feature<Point>, tri: Tri, weightBuffer: WeightBuffe
  * @param o 変換する点
  * @param verticesParams 頂点パラメータ
  * @param centroid 重心点
- * @param weightBuffer 重み付けバッファ
  * @returns 変換後の座標
  */
 function useVerticesArr(
   o: Feature<Point>,
   verticesParams: VerticesParams,
-  centroid: Feature<Point>,
-  weightBuffer: WeightBuffer
+  centroid: Feature<Point>
 ): Position {
   const coord = o.geometry!.coordinates;
   const centCoord = centroid.geometry!.coordinates;
@@ -100,7 +82,7 @@ function useVerticesArr(
     throw new Error("Unable to determine vertex index");
   }
   const tin = verticesParams[1]![index];
-  return transformTinArr(o, tin.features[0], weightBuffer);
+  return transformTinArr(o, tin.features[0]);
 }
 
 /**
@@ -112,7 +94,8 @@ function useVerticesArr(
  * @param indexedTins インデックス付き三角形群（オプション）
  * @param verticesParams 頂点パラメータ（オプション）
  * @param centroid 重心点（オプション）
- * @param weightBuffer 重み付けバッファ（オプション）
+ * @param _weightBuffer 使われない（2.00704 以降は無視する。位置引数の互換のためだけに残す）
+ * @deprecated
  * @param stateTriangle 状態三角形（オプション）
  * @param stateSetFunc 状態設定関数（オプション）
  * @returns 変換後の座標
@@ -123,7 +106,7 @@ function transformArr(
   indexedTins?: IndexedTins,
   verticesParams?: VerticesParams,
   centroid?: Feature<Point>,
-  weightBuffer?: WeightBuffer,
+  _weightBuffer?: WeightBuffer,
   stateTriangle?: Tri,
   stateSetFunc?: (tri?: Tri) => void
 ): Position {
@@ -155,8 +138,8 @@ function transformArr(
   }
   if (stateSetFunc) stateSetFunc(tin);
   return tin
-    ? transformTinArr(point, tin, weightBuffer)
-    : useVerticesArr(point, verticesParams!, centroid!, weightBuffer!);
+    ? transformTinArr(point, tin)
+    : useVerticesArr(point, verticesParams!, centroid!);
 }
 
 /**

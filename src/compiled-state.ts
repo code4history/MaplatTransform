@@ -1,10 +1,9 @@
 import { featureCollection, point } from "@turf/turf";
 import type { Position } from "geojson";
 import { normalizeEdges } from "./edgeutils.ts";
-import { indexesToTri, normalizeNodeKey } from "./triangulation.ts";
+import { indexesToTri } from "./triangulation.ts";
 import type { PropertyTriKey } from "./geometry.ts";
 import type {
-  BiDirectionKey,
   Compiled,
   CompiledLegacy,
   LegacyStatePayload,
@@ -12,13 +11,13 @@ import type {
   PointSet,
   StrictStatus,
   TinsBD,
-  VerticesParamsBD,
-  WeightBufferBD
+  VerticesParamsBD
 } from "./types.ts";
-import type { WeightBuffer } from "./geometry.ts";
 
-export const FORMAT_VERSION = 2.00703;
-export const FORMAT_VERSION_V3 = 3;
+/** V2 フォーマット版。2.00704: weight_buffer を廃止（空 {} を書く・読み込み時は無視）。旧キー正規化の閾値 2.00703 は triangulation.ts / edgeutils.ts のリテラルで、この定数とは独立 */
+export const FORMAT_VERSION = 2.00704;
+/** V3 も weight_buffer 廃止に合わせて 3.00001 に揃える（表示上の整合。外部へは export されず比較にも使われない） */
+export const FORMAT_VERSION_V3 = 3.00001;
 
 /**
  * Type guard for discriminating modern compiled payloads.
@@ -38,7 +37,6 @@ export function isModernCompiled(
 export function restoreModernState(compiled: Compiled): ModernStatePayload {
   return {
     points: compiled.points,
-    pointsWeightBuffer: normalizeWeightBuffer(compiled),
     strictStatus: deriveStrictStatus(compiled),
     verticesParams: buildVerticesParams(compiled),
     centroid: buildCentroid(compiled),
@@ -69,28 +67,10 @@ export function restoreLegacyState(
     tins,
     points: rebuildLegacyPoints(tins),
     strictStatus: normalized.strict_status,
-    pointsWeightBuffer: normalized.weight_buffer,
     verticesParams: normalized.vertices_params as VerticesParamsBD,
     centroid: normalized.centroid,
     kinks: normalized.kinks
   };
-}
-
-function normalizeWeightBuffer(compiled: Compiled): WeightBufferBD {
-  if (!compiled.version || compiled.version < FORMAT_VERSION) {
-    return (["forw", "bakw"] as BiDirectionKey[]).reduce((bd, forb) => {
-      const base = compiled.weight_buffer[forb];
-      if (base) {
-        bd[forb] = Object.keys(base).reduce((buffer, key) => {
-          const normKey = normalizeNodeKey(key);
-          buffer[normKey] = base[key];
-          return buffer;
-        }, {} as WeightBuffer);
-      }
-      return bd;
-    }, {} as WeightBufferBD);
-  }
-  return compiled.weight_buffer;
 }
 
 function deriveStrictStatus(compiled: Compiled): StrictStatus {
