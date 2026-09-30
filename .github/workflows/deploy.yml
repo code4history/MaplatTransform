@@ -45,6 +45,9 @@ jobs:
         run: |
           mkdir -p dist-demo/tests/compiled
           cp tests/compiled/*_v2.json tests/compiled/*_v3.json dist-demo/tests/compiled/
+          # demo/submaps.ts は ../tests/mapdata/ を読む（無いと submaps デモが 404 で地図を出せない）
+          mkdir -p dist-demo/tests/mapdata
+          cp tests/mapdata/*.json dist-demo/tests/mapdata/
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
