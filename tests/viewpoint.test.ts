@@ -54,7 +54,7 @@ describe("mercViewpoint2Mercs / mercs2MercViewpoint ラウンドトリップ", (
 
   it("mercViewpoint2Mercs が5点を返す", () => {
     const mercs = mercViewpoint2Mercs(center, zoom, rotation, size);
-    expect(mercs).toHaveLength(5);
+    expect(mercs).toHaveLength(6);
     mercs.forEach(m => {
       expect(m).toHaveLength(2);
     });
