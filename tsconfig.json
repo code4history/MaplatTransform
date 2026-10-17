@@ -18,10 +18,10 @@
     "sourceMap": true,
     "experimentalDecorators": true,
     "outDir": "./dist",
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     },
+    "types": ["*"],
     "typeRoots": [
       "./node_modules/@types",
       "./types"
