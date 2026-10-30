@@ -40,4 +40,4 @@ History uses Conventional Commits (`fix:`) alongside task-ID-prefixed messages (
 
 ## Release & Configuration Tips
 
-Version utilities in `scripts/` (`version:bump`, `version:sync`, `publish:npm(:dry)`) expect the workspace to be clean. `pnpm prepublishOnly` runs lint, typecheck, test, and build together as the release gate; verify the generated `dist-demo/` exports afterward. Keep secrets out of the repo; Maplat transformation definitions may include proprietary coordinates, so scrub sample data before sharing.
+Version utilities in `scripts/` (`version:bump`, `version:sync`) expect the workspace to be clean. `pnpm prepublishOnly` runs lint, typecheck, test, and build together as the release gate; verify the generated `dist-demo/` exports afterward. Keep secrets out of the repo; Maplat transformation definitions may include proprietary coordinates, so scrub sample data before sharing.
