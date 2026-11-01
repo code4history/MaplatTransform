@@ -1,6 +1,11 @@
 import type { Feature, Polygon, Position } from "geojson";
 import { booleanPointInPolygon, point, getCoords } from "@turf/turf";
-import { unitCalc, transformArr } from "./geometry.ts";
+import {
+  MAX_INDEX_CELLS_PER_TRIANGLE,
+  countIndexCells,
+  transformArr,
+  unitCalc
+} from "./geometry.ts";
 import type { Tri } from "./geometry.ts";
 import {
   FORMAT_VERSION,
@@ -156,6 +161,8 @@ export class Transform {
    * インデックスは変換処理を高速化するために使用されます。
    * グリッド形式のインデックスを作成し、各グリッドに
    * 含まれる三角形を記録します。
+   * セル数が MAX_INDEX_CELLS_PER_TRIANGLE で決まる上限を超えるデータは
+   * 索引を作らず、変換時に全三角形を線形に探します。
    */
   addIndexedTin() {
     const tins = this.tins!;
@@ -190,25 +197,6 @@ export class Transform {
       });
       return eachBound;
     });
-    const forwXUnit = (forwBound[1][0] - forwBound[0][0]) / gridNum;
-    const forwYUnit = (forwBound[1][1] - forwBound[0][1]) / gridNum;
-    const forwGridCache = forwEachBound.reduce(
-      (prev: number[][][], bound: Position[], index: number) => {
-        const normXMin = unitCalc(bound[0][0], forwBound[0][0], forwXUnit, gridNum);
-        const normXMax = unitCalc(bound[1][0], forwBound[0][0], forwXUnit, gridNum);
-        const normYMin = unitCalc(bound[0][1], forwBound[0][1], forwYUnit, gridNum);
-        const normYMax = unitCalc(bound[1][1], forwBound[0][1], forwYUnit, gridNum);
-        for (let cx = normXMin; cx <= normXMax; cx++) {
-          if (!prev[cx]) prev[cx] = [];
-          for (let cy = normYMin; cy <= normYMax; cy++) {
-            if (!prev[cx][cy]) prev[cx][cy] = [];
-            prev[cx][cy].push(index);
-          }
-        }
-        return prev;
-      },
-      []
-    );
     const bakwEachBound = bakw!.features.map((tri: Tri) => {
       let eachBound: Position[] = [];
       getCoords(tri)[0].map((point: Position) => {
@@ -231,6 +219,33 @@ export class Transform {
       });
       return eachBound;
     });
+    const indexCells = Math.max(
+      countIndexCells(forwEachBound, forwBound, gridNum),
+      countIndexCells(bakwEachBound, bakwBound, gridNum)
+    );
+    if (indexCells > MAX_INDEX_CELLS_PER_TRIANGLE * forw!.features.length) {
+      this.indexedTins = undefined;
+      return;
+    }
+    const forwXUnit = (forwBound[1][0] - forwBound[0][0]) / gridNum;
+    const forwYUnit = (forwBound[1][1] - forwBound[0][1]) / gridNum;
+    const forwGridCache = forwEachBound.reduce(
+      (prev: number[][][], bound: Position[], index: number) => {
+        const normXMin = unitCalc(bound[0][0], forwBound[0][0], forwXUnit, gridNum);
+        const normXMax = unitCalc(bound[1][0], forwBound[0][0], forwXUnit, gridNum);
+        const normYMin = unitCalc(bound[0][1], forwBound[0][1], forwYUnit, gridNum);
+        const normYMax = unitCalc(bound[1][1], forwBound[0][1], forwYUnit, gridNum);
+        for (let cx = normXMin; cx <= normXMax; cx++) {
+          if (!prev[cx]) prev[cx] = [];
+          for (let cy = normYMin; cy <= normYMax; cy++) {
+            if (!prev[cx][cy]) prev[cx][cy] = [];
+            prev[cx][cy].push(index);
+          }
+        }
+        return prev;
+      },
+      []
+    );
     const bakwXUnit = (bakwBound[1][0] - bakwBound[0][0]) / gridNum;
     const bakwYUnit = (bakwBound[1][1] - bakwBound[0][1]) / gridNum;
     const bakwGridCache = bakwEachBound.reduce(
@@ -294,8 +309,8 @@ export class Transform {
     }
     const tins = backward ? this.tins!.bakw : this.tins!.forw;
     const indexedTins = backward
-      ? this.indexedTins!.bakw
-      : this.indexedTins!.forw;
+      ? this.indexedTins?.bakw
+      : this.indexedTins?.forw;
     const verticesParams = backward
       ? this.vertices_params!.bakw
       : this.vertices_params!.forw;

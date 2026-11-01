@@ -162,6 +162,34 @@ function unitCalc(
   return normCoord;
 }
 
+/** 三角形 1 つあたりの索引セル数の平均の上限。超えるデータは索引を作らない */
+export const MAX_INDEX_CELLS_PER_TRIANGLE = 36;
+
+/**
+ * 索引を作ると gridCache に入る要素数を、作らずに数える
+ * @param eachBounds 三角形ごとの外接矩形
+ * @param bound 全体の外接矩形
+ * @param gridNum グリッド数
+ * @returns 要素数の合計
+ */
+export function countIndexCells(
+  eachBounds: Position[][],
+  bound: Position[],
+  gridNum: number
+): number {
+  const xUnit = (bound[1][0] - bound[0][0]) / gridNum;
+  const yUnit = (bound[1][1] - bound[0][1]) / gridNum;
+  return eachBounds.reduce((total, each) => {
+    const normXMin = unitCalc(each[0][0], bound[0][0], xUnit, gridNum);
+    const normXMax = unitCalc(each[1][0], bound[0][0], xUnit, gridNum);
+    const normYMin = unitCalc(each[0][1], bound[0][1], yUnit, gridNum);
+    const normYMax = unitCalc(each[1][1], bound[0][1], yUnit, gridNum);
+    const cells = (normXMax - normXMin + 1) * (normYMax - normYMin + 1);
+    // 非数の座標は索引のセルに入らない。合計を非数にすると上限の比較をすり抜ける
+    return cells > 0 ? total + cells : total;
+  }, 0);
+}
+
 /**
  * 与えられた角度に最も近い頂点のインデックスを決定する
  * 
