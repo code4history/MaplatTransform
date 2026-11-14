@@ -58,7 +58,7 @@ export class Transform {
   static YAXIS_INVERT = "invert" as const;
 
   points: PointSet[] = [];
-  /** @deprecated 2.00704 以降、Transform はこのプロパティを設定も参照もしない。サブクラス（MaplatTin）は、旧 @maplat/transform と組まれたときの互換のため {} を入れる（t2 設計 §2.1） */
+  /** @deprecated 2.00704 以降、Transform はこのプロパティを設定も参照もしない。サブクラス（MaplatTin）は、旧 @maplat/transform と組まれたときの互換のため {} を入れる */
   pointsWeightBuffer?: WeightBufferBD;
   strict_status?: StrictStatus;
   vertices_params?: VerticesParamsBD;
