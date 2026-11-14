@@ -34,7 +34,7 @@ MaplatTransform is open-source under the Apache License 2.0 (from version 0.5.3)
 
 <!-- release-pinned:start -->
 > **Current release: `1.1.0`**. This block is the only place in
-> this repository that carries a release version (ADR-0012); everything outside it is
+> this repository that carries a release version; everything outside it is
 > written against the 1.0 release.
 > npm: [`@maplat/transform`](https://www.npmjs.com/package/@maplat/transform)
 > [![npm](https://img.shields.io/npm/v/@maplat/transform)](https://www.npmjs.com/package/@maplat/transform)
@@ -101,7 +101,7 @@ pnpm test
 <!-- SECTION 6: Prerequisites -->
 ## Prerequisites
 
-> Derived from the `engines` field in `package.json` (ADR-0012: release-dependent).
+> Derived from the `engines` field in `package.json` (release-dependent).
 
 - Node.js: `>=20` or later
 - pnpm: `>=9` or later (recommended; npm also works)
@@ -147,7 +147,7 @@ repository; the Sister repositories table below is the public substitute)*
 | Project info / features / cases | <https://www.maplat.jp/en/> | Product site |
 | Sponsor / business inquiry | <https://www.nayuta-inc.co.jp/en/> | Corporate site (Nayuta, Inc.) |
 
-> ADR-0013: Apache-licensed repositories (this one) link to both sites.
+> Apache-licensed repositories (this one) link to both sites.
 > MIT-licensed sister repos (Weiwudi / Quyuan / Chuci) carry no Nayuta link.
 
 <!-- SECTION 10: License -->

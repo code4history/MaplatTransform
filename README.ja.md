@@ -33,7 +33,7 @@ MaplatTransform は Apache License 2.0（バージョン 0.5.3 以降）のオ�
 
 <!-- release-pinned:start -->
 > **現在のリリース: `1.1.0`**。このブロックは本リポジトリで唯一
-> リリース版数を持つ場所です（ADR-0012）。ブロックの外はすべて 1.0 正式版を前提に
+> リリース版数を持つ場所です。ブロックの外はすべて 1.0 正式版を前提に
 > 書かれています。
 > npm: [`@maplat/transform`](https://www.npmjs.com/package/@maplat/transform)
 > [![npm](https://img.shields.io/npm/v/@maplat/transform)](https://www.npmjs.com/package/@maplat/transform)
@@ -98,7 +98,7 @@ pnpm test
 <!-- SECTION 6: Prerequisites -->
 ## 動作環境
 
-> `package.json` の `engines` フィールドから自動抽出（ADR-0012: 特定リリースに紐づく）。
+> `package.json` の `engines` フィールドから自動抽出（特定のリリースに紐づく値）。
 
 - Node.js: `>=20` 以上
 - pnpm: `>=9` 以上（推奨・npm も可）
@@ -143,7 +143,7 @@ Maplat エコシステムの一部です。全容は下記エコシステム図�
 | プロジェクト情報・機能紹介・事例 | <https://www.maplat.jp/> | 製品サイト |
 | 支援企業・案件問い合わせ | <https://www.nayuta-inc.co.jp/> | コーポレートサイト（那由多社） |
 
-> ADR-0013: Apache ライセンスのリポジトリ（本リポジトリ）は両サイトへリンクします。
+> Apache ライセンスのリポジトリ（本リポジトリ）は両サイトへリンクします。
 > MIT ライセンスの姉妹リポジトリ（Weiwudi / Quyuan / Chuci）へは那由多社リンクを置きません。
 
 <!-- SECTION 10: License -->
