@@ -52,7 +52,7 @@ const libPath = path.resolve(args.lib);
 const testsDir = path.resolve(args.tests);
 const { Transform } = await import(libPath);
 
-// ─── ヘルパー（t1a テスト tests/weight-buffer-removal.test.ts と同一の定義） ──
+// ─── ヘルパー（tests/weight-buffer-removal.test.ts と同一の定義） ──
 /** 独立アフィン参照（Cramer 式。geometry.ts の式を写さない） */
 function independentAffine(tri, p) {
   const s = tri.geometry.coordinates[0];
