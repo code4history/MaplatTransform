@@ -212,7 +212,7 @@ function pureAffine(tri: Tri, p: [number, number]): [number, number] {
   return [abv * abd[0] + acv * acd[0] + ad[0], abv * abd[1] + acv * acd[1] + ad[1]];
 }
 
-/** 重心座標アフィンの独立実装（三角形内の純アフィンの試験用。Cramer 式で u,v を解く。geometry.ts の式を写さない） */
+/** 重心座標アフィンの独立実装（格子点の純アフィンの試験用。三角形の内側と、凸包の外側の外挿の扇形の三角形の両方に使う。Cramer 式で u,v を解く。geometry.ts の式を写さない） */
 function independentAffine(tri: Tri, p: [number, number]): [number, number] {
   const s = tri.geometry.coordinates[0];
   const a = s[0];
@@ -258,8 +258,8 @@ describe("weight_buffer 廃止", () => {
     for (const cid of Object.keys(EDGE_BACK_EXCLUDE)) expect(allCids.has(cid)).toBe(true);
   });
 
-  // ── transform output is bit-identical whether weight_buffer is kept, emptied or removed ──────────────────────────────────────────────────────────
-  describe("transform output is bit-identical whether weight_buffer is kept, emptied or removed", () => {
+  // ── transform output is bit-identical whether weight_buffer is kept, emptied, removed, or emptied with the version bumped ──────────────────────────────────────────────────────────
+  describe("transform output is bit-identical whether weight_buffer is kept, emptied, removed, or emptied with the version bumped", () => {
     for (const entry of ALL) {
       it(`${entry.name}`, () => {
         const c = entry.compiled;
@@ -360,8 +360,8 @@ describe("weight_buffer 廃止", () => {
     });
   });
 
-  // ── points on triangle edges match linear interpolation (forward 1e-12, backward within the exclusion table) ───────────────────────────────────────────────────────
-  describe("points on triangle edges match linear interpolation (forward 1e-12, backward within the exclusion table)", () => {
+  // ── points on triangle edges match linear interpolation within 1e-12 (backward strict only; listed entries within the exclusion table) ───────────────────────────────────────────────────────
+  describe("points on triangle edges match linear interpolation within 1e-12 (backward strict only; listed entries within the exclusion table)", () => {
     for (const entry of ALL) {
       it(`${entry.name}（順）`, () => {
         const c = entry.compiled;
