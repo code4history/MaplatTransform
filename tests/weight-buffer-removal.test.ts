@@ -193,7 +193,7 @@ function legacyWeighted(
   return [abv * abd[0] + acv * acd[0] + ad[0], abv * abd[1] + acv * acd[1] + ad[1]];
 }
 
-/** 純アフィン参照（T-BIT 陽性対照用。geometry.ts の非重み部分と同型） */
+/** 純アフィン参照（ビット一致の試験の陽性対照用。geometry.ts の非重み部分と同型） */
 function pureAffine(tri: Tri, p: [number, number]): [number, number] {
   const a = tri.geometry.coordinates[0][0];
   const b = tri.geometry.coordinates[0][1];
@@ -212,7 +212,7 @@ function pureAffine(tri: Tri, p: [number, number]): [number, number] {
   return [abv * abd[0] + acv * acd[0] + ad[0], abv * abd[1] + acv * acd[1] + ad[1]];
 }
 
-/** 重心座標アフィンの独立実装（T-AFF 用。Cramer 式で u,v を解く。geometry.ts の式を写さない） */
+/** 重心座標アフィンの独立実装（三角形内の純アフィンの試験用。Cramer 式で u,v を解く。geometry.ts の式を写さない） */
 function independentAffine(tri: Tri, p: [number, number]): [number, number] {
   const s = tri.geometry.coordinates[0];
   const a = s[0];
@@ -258,8 +258,8 @@ describe("weight_buffer 廃止", () => {
     for (const cid of Object.keys(EDGE_BACK_EXCLUDE)) expect(allCids.has(cid)).toBe(true);
   });
 
-  // ── T-BIT ──────────────────────────────────────────────────────────
-  describe("T-BIT", () => {
+  // ── transform output is bit-identical whether weight_buffer is kept, emptied or removed ──────────────────────────────────────────────────────────
+  describe("transform output is bit-identical whether weight_buffer is kept, emptied or removed", () => {
     for (const entry of ALL) {
       it(`${entry.name}`, () => {
         const c = entry.compiled;
@@ -328,8 +328,8 @@ describe("weight_buffer 廃止", () => {
     });
   });
 
-  // ── T-GCP ────────────────────────────────────────────────────────
-  describe("T-GCP", () => {
+  // ── GCPs map exactly forward and within 1e-12 backward (backward only when strict or loose) ────────────────────────────────────────────────────────
+  describe("GCPs map exactly forward and within 1e-12 backward (backward only when strict or loose)", () => {
     for (const entry of ALL) {
       it(`${entry.name}`, () => {
         const c = entry.compiled;
@@ -360,8 +360,8 @@ describe("weight_buffer 廃止", () => {
     });
   });
 
-  // ── T-EDGE ───────────────────────────────────────────────────────
-  describe("T-EDGE", () => {
+  // ── points on triangle edges match linear interpolation (forward 1e-12, backward within the exclusion table) ───────────────────────────────────────────────────────
+  describe("points on triangle edges match linear interpolation (forward 1e-12, backward within the exclusion table)", () => {
     for (const entry of ALL) {
       it(`${entry.name}（順）`, () => {
         const c = entry.compiled;
@@ -462,8 +462,8 @@ describe("weight_buffer 廃止", () => {
     });
   });
 
-  // ── T-RT ─────────────────────────────────────────────────────────
-  describe("T-RT", () => {
+  // ── round trip returns within 1e-5 (listed entries within the exclusion table, strict only) ─────────────────────────────────────────────────────────
+  describe("round trip returns within 1e-5 (listed entries within the exclusion table, strict only)", () => {
     for (const entry of ALL) {
       it(`${entry.name}`, () => {
         const c = entry.compiled;
@@ -497,8 +497,8 @@ describe("weight_buffer 廃止", () => {
     }
   });
 
-  // ── T-AFF ──────────────────────────────────────────────────────────
-  describe("T-AFF", () => {
+  // ── grid points match an independent affine of their triangle or extrapolation fan (1e-12) ──────────────────────────────────────────────────────────
+  describe("grid points match an independent affine of their triangle or extrapolation fan (1e-12)", () => {
     for (const entry of ALL) {
       it(`${entry.name}`, () => {
         const c = entry.compiled;
@@ -565,8 +565,8 @@ describe("weight_buffer 廃止", () => {
     });
   });
 
-  // ── T-LEGACY ─────────────────────────────────────────────────────
-  describe("T-LEGACY", () => {
+  // ── legacy compiled data without a version still loads and maps GCPs ─────────────────────────────────────────────────────
+  describe("legacy compiled data without a version still loads and maps GCPs", () => {
     for (const key of ["naramachi_yasui_bunko", "fushimijo_maplat", "burakita-2024"]) {
       it(`${key}`, () => {
         const raw = JSON.parse(
@@ -608,8 +608,8 @@ describe("weight_buffer 廃止", () => {
     });
   });
 
-  // ── T-VER（§4） ────────────────────────────────────────────────────────────
-  describe("T-VER (§4)", () => {
+  // ── format version ────────────────────────────────────────────────────────────
+  describe("format version", () => {
     it("format_version === 2.00704", () => {
       expect(format_version).toBe(2.00704);
     });

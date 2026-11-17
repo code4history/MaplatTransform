@@ -6,7 +6,7 @@
  *
  * - 手動実行: `node scripts/generate-visible-layers-fixtures.mjs`（pnpm を spawn しない）
  * - 定数は固定の表の値。
- *   AC に合わせて動かしてはならない。
+ *   試験の期待値に合わせて動かしてはならない。
  * - 生成手順は設計時の検算スクリプトの
  *   mainCompiled / subCompiled と同一。
  *
