@@ -1,13 +1,13 @@
 /**
- * scripts/generate-oct26-m2-t4-fixtures.mjs
+ * scripts/generate-visible-layers-fixtures.mjs
  *
- * oct26-m2-t4（MaplatTransform#9）の合成 5 層 fixture を生成し、
- * tests/compiled/oct26_m2_t4_synthetic.json に保存する。
+ * 可視層判定（MaplatTransform#9）の合成 5 層 fixture を生成し、
+ * tests/compiled/visible_layers_synthetic.json に保存する。
  *
- * - 手動実行: `node scripts/generate-oct26-m2-t4-fixtures.mjs`（pnpm を spawn しない）
- * - 定数は設計書 docs/superpowers/specs/2026-09-14-oct26-m2-t4-design.md §6.1 の表で固定。
+ * - 手動実行: `node scripts/generate-visible-layers-fixtures.mjs`（pnpm を spawn しない）
+ * - 定数は固定の表の値。
  *   AC に合わせて動かしてはならない。
- * - 生成手順は設計検算 docs/superpowers/evidence/oct26-m2-t4/v3-probe/synthetic.mjs の
+ * - 生成手順は設計時の検算スクリプトの
  *   mainCompiled / subCompiled と同一。
  *
  * 紙: 2048×1536 px。本図の紙座標 (x,y) ↔ メルカトル (14600000 + 2x, 3800000 − 2y)。
@@ -22,7 +22,7 @@ import { fileURLToPath } from "url";
 const __dir = dirname(fileURLToPath(import.meta.url));
 const root = join(__dir, "..");
 const outDir = join(root, "tests", "compiled");
-const outFile = join(outDir, "oct26_m2_t4_synthetic.json");
+const outFile = join(outDir, "visible_layers_synthetic.json");
 
 const W = 2048;
 const H = 1536;
@@ -107,7 +107,7 @@ async function subCompiled(L) {
 
 const out = {
   description:
-    "oct26-m2-t4 合成 5 層 fixture（MaplatTransform#9）。scripts/generate-oct26-m2-t4-fixtures.mjs で生成。定数は設計書 §6.1。",
+    "可視層判定の合成 5 層 fixture（MaplatTransform#9）。scripts/generate-visible-layers-fixtures.mjs で生成。",
   paper: { width: W, height: H, mercOrigin: M0, mercPerPx: 2 },
   layers: {},
   main: await mainCompiled(),

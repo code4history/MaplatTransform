@@ -1,5 +1,5 @@
 {
-  "description": "oct26-m2-t4 合成 5 層 fixture（MaplatTransform#9）。scripts/generate-oct26-m2-t4-fixtures.mjs で生成。定数は設計書 §6.1。",
+  "description": "可視層判定の合成 5 層 fixture（MaplatTransform#9）。scripts/generate-visible-layers-fixtures.mjs で生成。",
   "paper": {
     "width": 2048,
     "height": 1536,

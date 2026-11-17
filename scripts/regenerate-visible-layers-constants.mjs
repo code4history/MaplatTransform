@@ -1,32 +1,32 @@
 /**
- * scripts/m12-regenerate-m2t4-constants.mjs
+ * scripts/regenerate-visible-layers-constants.mjs
  *
- * oct26-m12-t1b（DES-M12-WEIGHTBUFFER-0919）: tests/map-transform.test.ts の m2-t4 系
+ * weight_buffer の廃止に合わせて、tests/map-transform.test.ts の可視層判定の
  * 期待値を新 dist（weight_buffer を無視する純アフィン Transform）で再計算して書き換える。
  *
  * 使い方:
- *   node scripts/m12-regenerate-m2t4-constants.mjs --lib <dist/maplat_transform.js> --tests <tests ディレクトリ>
+ *   node scripts/regenerate-visible-layers-constants.mjs --lib <dist/maplat_transform.js> --tests <tests ディレクトリ>
  *     検査のみ（1 件でも外れたら書き出さずに exit 1）
  *   … --write
  *     検査を全件通した場合のみ書き出す
  *   … --self-test
  *     層番号を 1 つ入れ替えた期待値を与えると検査 1 が exit 1 になる（識別力）ことを確かめる
  *
- * 書き換えてよい範囲（t1 設計 §6.2。これ以外の行が diff に出たら exit 1）:
- *   - 422 行 `const OCT26_CHARACTERIZATION = {…};`（1 行 JSON。snap() の 5 項目を
+ * 書き換えてよい範囲（これ以外の行が diff に出たら exit 1）:
+ *   - 422 行 `const FX_CHARACTERIZATION = {…};`（1 行 JSON。snap() の 5 項目を
  *     synthetic・nobeoka の全要素で再計算）
  *   - 406〜409 行（「可視層 1932延岡」の 4 ケースの座標）
  *   - 489〜492 行（NOBEOKA_CURRENT の 4 行。r2 丸め）
  *   - 305〜311 行・473〜481 行（合成 5 層と DESIGN_CURRENT）は再計算して値が変わった場合だけ書き換える
  *   - 変更してはならない: 323〜325 行（Issue #9 再現コードの期待 [[2,[1716.9,302.05]]]）
  *
- * 検査（t1 設計 §6.2。外れたら書き出さずに exit 1）:
+ * 検査（外れたら書き出さずに exit 1）:
  *   1. 層番号の並びの不変（merc2XyWithLayer・merc2XyVisibleLayers の各要素の 0 番目が再計算前後で同一）
  *   2. 各 xy について、その層の Transform で順変換すると入力 merc に戻る
  *      （getLayerTransform(idx).transform(xy, false, idx > 0) と merc の差が相対 1e-9 以内）
  *
  * ヘルパーの写し元（tests/map-transform.test.ts の行）: 193-218（Ll2Merc/MainPx2Merc/LayerPx2MainPx）、
- * 221-245（OCT26_SUB/oct26Sub/OCT26_FIXTURES）、276-291（oct26SynMt/oct26NobeokaMt/OCT26_A570）、
+ * 221-245（FX_SUB/fxSub/FX_FIXTURES）、276-291（fxSynMt/fxNobeokaMt/FX_A570）、
  * 424-441（snap）、470-471（r2）。
  */
 import fs from "node:fs";
@@ -67,49 +67,49 @@ function loadCompiled(key, ver) {
 }
 
 // ─── ヘルパー（tests/map-transform.test.ts からの写し） ────────────────────────
-const OCT26_R = 6378137;
-const oct26Ll2Merc = ([lng, lat]) => [
-  (OCT26_R * lng * Math.PI) / 180,
-  OCT26_R * Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360))
+const FX_R = 6378137;
+const fxLl2Merc = ([lng, lat]) => [
+  (FX_R * lng * Math.PI) / 180,
+  FX_R * Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360))
 ];
 
-const oct26Syn = JSON.parse(
-  fs.readFileSync(path.join(args.tests, "compiled", "oct26_m2_t4_synthetic.json"), "utf-8")
+const fxSyn = JSON.parse(
+  fs.readFileSync(path.join(args.tests, "compiled", "visible_layers_synthetic.json"), "utf-8")
 );
-const OCT26_M0 = [14600000, 3800000];
-const oct26MainPx2Merc = ([x, y]) => [OCT26_M0[0] + 2 * x, OCT26_M0[1] - 2 * y];
-const oct26LayerPx2MainPx = (L, [x, y]) => [
+const FX_M0 = [14600000, 3800000];
+const fxMainPx2Merc = ([x, y]) => [FX_M0[0] + 2 * x, FX_M0[1] - 2 * y];
+const fxLayerPx2MainPx = (L, [x, y]) => [
   L.mainCenter[0] + (x - L.center[0]) * L.k,
   L.mainCenter[1] + (y - L.center[1]) * L.k
 ];
 
-const OCT26_SUB = {
+const FX_SUB = {
   station: { key: "wide_station", priority: 2, importance: 1 },
   wide: { key: "wide_area", priority: 1, importance: -1 },
   a: { key: "castle_a", priority: 3, importance: 1 },
   b: { key: "temple_b", priority: 4, importance: 2 },
   c: { key: "wide_area_c", priority: 1, importance: -2 }
 };
-const oct26Sub = (s, over = {}) => ({
-  compiled: oct26Syn.sub[over.key ?? s.key],
+const fxSub = (s, over = {}) => ({
+  compiled: fxSyn.sub[over.key ?? s.key],
   priority: over.priority ?? s.priority,
   importance: over.importance ?? s.importance
 });
-const OCT26_FIXTURES = {
-  base5: [oct26Sub(OCT26_SUB.station), oct26Sub(OCT26_SUB.wide), oct26Sub(OCT26_SUB.a), oct26Sub(OCT26_SUB.b)],
-  "D-samepri": [oct26Sub(OCT26_SUB.station), oct26Sub(OCT26_SUB.wide), oct26Sub(OCT26_SUB.a), oct26Sub(OCT26_SUB.b, { priority: 3 })],
-  "D-impTie": [oct26Sub(OCT26_SUB.station), oct26Sub(OCT26_SUB.wide), oct26Sub(OCT26_SUB.a, { key: "castle_a_impTie" }), oct26Sub(OCT26_SUB.b)],
-  "D-impPriTie": [oct26Sub(OCT26_SUB.station), oct26Sub(OCT26_SUB.wide), oct26Sub(OCT26_SUB.a, { key: "castle_a_impTie", priority: 2 }), oct26Sub(OCT26_SUB.b)],
-  "D-pri0": [oct26Sub(OCT26_SUB.station, { priority: 0 }), oct26Sub(OCT26_SUB.wide), oct26Sub(OCT26_SUB.a), oct26Sub(OCT26_SUB.b)],
-  "D-4layer": [oct26Sub(OCT26_SUB.station), oct26Sub(OCT26_SUB.a), oct26Sub(OCT26_SUB.b)],
-  "D-6layer": [oct26Sub(OCT26_SUB.station), oct26Sub(OCT26_SUB.wide), oct26Sub(OCT26_SUB.a), oct26Sub(OCT26_SUB.b), oct26Sub(OCT26_SUB.c)]
+const FX_FIXTURES = {
+  base5: [fxSub(FX_SUB.station), fxSub(FX_SUB.wide), fxSub(FX_SUB.a), fxSub(FX_SUB.b)],
+  "D-samepri": [fxSub(FX_SUB.station), fxSub(FX_SUB.wide), fxSub(FX_SUB.a), fxSub(FX_SUB.b, { priority: 3 })],
+  "D-impTie": [fxSub(FX_SUB.station), fxSub(FX_SUB.wide), fxSub(FX_SUB.a, { key: "castle_a_impTie" }), fxSub(FX_SUB.b)],
+  "D-impPriTie": [fxSub(FX_SUB.station), fxSub(FX_SUB.wide), fxSub(FX_SUB.a, { key: "castle_a_impTie", priority: 2 }), fxSub(FX_SUB.b)],
+  "D-pri0": [fxSub(FX_SUB.station, { priority: 0 }), fxSub(FX_SUB.wide), fxSub(FX_SUB.a), fxSub(FX_SUB.b)],
+  "D-4layer": [fxSub(FX_SUB.station), fxSub(FX_SUB.a), fxSub(FX_SUB.b)],
+  "D-6layer": [fxSub(FX_SUB.station), fxSub(FX_SUB.wide), fxSub(FX_SUB.a), fxSub(FX_SUB.b), fxSub(FX_SUB.c)]
 };
-const oct26SynMt = (name) => {
+const fxSynMt = (name) => {
   const mt = new MapTransform();
-  mt.setMapData({ compiled: oct26Syn.main, maxZoom: 3, sub_maps: OCT26_FIXTURES[name] });
+  mt.setMapData({ compiled: fxSyn.main, maxZoom: 3, sub_maps: FX_FIXTURES[name] });
   return mt;
 };
-const oct26NobeokaMt = () => {
+const fxNobeokaMt = () => {
   const mt = new MapTransform();
   mt.setMapData({
     compiled: loadCompiled("1932_nobeoka", "v2"),
@@ -118,22 +118,22 @@ const oct26NobeokaMt = () => {
   });
   return mt;
 };
-const OCT26_A570 = oct26MainPx2Merc(oct26LayerPx2MainPx(oct26Syn.layers.castle_a, [570, 1300]));
+const FX_A570 = fxMainPx2Merc(fxLayerPx2MainPx(fxSyn.layers.castle_a, [570, 1300]));
 
 const SYN_MERC = {
-  "(700,900)": oct26MainPx2Merc([700, 900]),
-  "(1200,700)": oct26MainPx2Merc([1200, 700]),
-  "(1700,1250)": oct26MainPx2Merc([1700, 1250]),
-  "(1700,290)": oct26MainPx2Merc([1700, 290]),
-  "A(570,1300)": OCT26_A570,
-  "(-500,768)": oct26MainPx2Merc([-500, 768])
+  "(700,900)": fxMainPx2Merc([700, 900]),
+  "(1200,700)": fxMainPx2Merc([1200, 700]),
+  "(1700,1250)": fxMainPx2Merc([1700, 1250]),
+  "(1700,290)": fxMainPx2Merc([1700, 290]),
+  "A(570,1300)": FX_A570,
+  "(-500,768)": fxMainPx2Merc([-500, 768])
 };
 const SYN_MERC_TEXT = {
   "(700,900)": 'SYN_MERC["(700,900)"]',
   "(1200,700)": 'SYN_MERC["(1200,700)"]',
   "(1700,1250)": 'SYN_MERC["(1700,1250)"]',
   "(1700,290)": 'SYN_MERC["(1700,290)"]',
-  "A(570,1300)": "OCT26_A570",
+  "A(570,1300)": "FX_A570",
   "(-500,768)": 'SYN_MERC["(-500,768)"]'
 };
 
@@ -213,10 +213,10 @@ const BASE5_VISIBLE = [
   ["A の (570,1300) B の枠の下", null],
   ["#104 の本図 (-500,768) 紙外は判定しない", [-500, 768]]
 ];
-const base5Mt = oct26SynMt("base5");
+const base5Mt = fxSynMt("base5");
 for (let i = 0; i < BASE5_VISIBLE.length; i++) {
   const [label, coord] = BASE5_VISIBLE[i];
-  const merc = coord === null ? OCT26_A570 : oct26MainPx2Merc(coord);
+  const merc = coord === null ? FX_A570 : fxMainPx2Merc(coord);
   rows.push({
     lineNo: 306 + i,
     label,
@@ -234,10 +234,10 @@ const NOBEOKA_VISIBLE = [
   ["紙内地点 [131.655753,32.556258]", [131.655753, 32.556258]],
   ["表現範囲外地点 [131.644679,32.613064]", [131.644679, 32.613064]]
 ];
-const nobeokaMt = oct26NobeokaMt();
+const nobeokaMt = fxNobeokaMt();
 for (let i = 0; i < NOBEOKA_VISIBLE.length; i++) {
   const [label, lnglat] = NOBEOKA_VISIBLE[i];
-  const merc = oct26Ll2Merc(lnglat);
+  const merc = fxLl2Merc(lnglat);
   rows.push({
     lineNo: 406 + i,
     label,
@@ -263,7 +263,7 @@ const designLineNos = [473, 474, 475, 476, 477, 478, 479, 481];
 const designMts = {};
 for (let i = 0; i < DESIGN_CURRENT.length; i++) {
   const [fx, label] = DESIGN_CURRENT[i];
-  if (!designMts[fx]) designMts[fx] = oct26SynMt(fx);
+  if (!designMts[fx]) designMts[fx] = fxSynMt(fx);
   const mt = designMts[fx];
   const merc = SYN_MERC[label];
   rows.push({
@@ -279,7 +279,7 @@ for (let i = 0; i < DESIGN_CURRENT.length; i++) {
 // NOBEOKA_CURRENT（489〜492。r2(merc2XyWithLayer)）
 for (let i = 0; i < NOBEOKA_VISIBLE.length; i++) {
   const [, lnglat] = NOBEOKA_VISIBLE[i];
-  const merc = oct26Ll2Merc(lnglat);
+  const merc = fxLl2Merc(lnglat);
   rows.push({
     lineNo: 489 + i,
     label: `nobeoka ${lnglat.join(",")}`,
@@ -399,7 +399,7 @@ for (const row of rows) {
     const i = row.lineNo - 306;
     const [label] = BASE5_VISIBLE[i];
     const [, coord] = BASE5_VISIBLE[i];
-    const mercExpr = coord === null ? "OCT26_A570" : `oct26MainPx2Merc(${fmt(coord)})`;
+    const mercExpr = coord === null ? "FX_A570" : `fxMainPx2Merc(${fmt(coord)})`;
     const issueTop2 = row.newFull.slice(0, 2).map((r) => r[0]);
     newLineByNo.set(
       n,
@@ -423,29 +423,29 @@ for (const row of rows) {
   }
 }
 
-// OCT26_CHARACTERIZATION（422 行。再計算して全体を再直列化）
-const oct26CharMatch = testLines[421].match(/const OCT26_CHARACTERIZATION = (\{.*\});/);
-if (!oct26CharMatch) {
-  console.error("422 行の OCT26_CHARACTERIZATION をパースできない");
+// FX_CHARACTERIZATION（422 行。再計算して全体を再直列化）
+const fxCharMatch = testLines[421].match(/const FX_CHARACTERIZATION = (\{.*\});/);
+if (!fxCharMatch) {
+  console.error("422 行の FX_CHARACTERIZATION をパースできない");
   process.exit(1);
 }
-const oldChar = JSON.parse(oct26CharMatch[1]);
+const oldChar = JSON.parse(fxCharMatch[1]);
 
 const syntheticNew = oldChar.synthetic.map((c) => {
   const merc = SYN_MERC[c.label];
-  const s = snap(oct26SynMt(c.fixture), merc);
+  const s = snap(fxSynMt(c.fixture), merc);
   return { fixture: c.fixture, label: c.label, ...s };
 });
-const nobeokaCharMt = oct26NobeokaMt();
+const nobeokaCharMt = fxNobeokaMt();
 const nobeokaNew = oldChar.nobeoka.map((c) => {
-  const merc = oct26Ll2Merc(c.lnglat);
+  const merc = fxLl2Merc(c.lnglat);
   const s = snap(nobeokaCharMt, merc);
   return { lnglat: c.lnglat, ...s };
 });
 const newChar = { synthetic: syntheticNew, nobeoka: nobeokaNew };
-newLineByNo.set(422, `const OCT26_CHARACTERIZATION = ${JSON.stringify(newChar)};`);
+newLineByNo.set(422, `const FX_CHARACTERIZATION = ${JSON.stringify(newChar)};`);
 
-// OCT26_CHARACTERIZATION の merc2XyWithLayer の層番号列も検査 1 の対象
+// FX_CHARACTERIZATION の merc2XyWithLayer の層番号列も検査 1 の対象
 {
   let okChar = true;
   for (let i = 0; i < oldChar.synthetic.length; i++) {
@@ -453,7 +453,7 @@ newLineByNo.set(422, `const OCT26_CHARACTERIZATION = ${JSON.stringify(newChar)};
     const newIdx = syntheticNew[i].merc2XyWithLayer.map((r) => (r == null ? r : r[0]));
     if (JSON.stringify(oldIdx) !== JSON.stringify(newIdx)) {
       okChar = false;
-      console.error(`  [検査1 NG] OCT26_CHARACTERIZATION.synthetic[${i}] 層番号`);
+      console.error(`  [検査1 NG] FX_CHARACTERIZATION.synthetic[${i}] 層番号`);
     }
   }
   for (let i = 0; i < oldChar.nobeoka.length; i++) {
@@ -461,21 +461,21 @@ newLineByNo.set(422, `const OCT26_CHARACTERIZATION = ${JSON.stringify(newChar)};
     const newIdx = nobeokaNew[i].merc2XyWithLayer.map((r) => (r == null ? r : r[0]));
     if (JSON.stringify(oldIdx) !== JSON.stringify(newIdx)) {
       okChar = false;
-      console.error(`  [検査1 NG] OCT26_CHARACTERIZATION.nobeoka[${i}] 層番号`);
+      console.error(`  [検査1 NG] FX_CHARACTERIZATION.nobeoka[${i}] 層番号`);
     }
   }
   if (!okChar) {
-    console.error("OCT26_CHARACTERIZATION の層番号が不変でないため exit 1");
+    console.error("FX_CHARACTERIZATION の層番号が不変でないため exit 1");
     process.exit(1);
   }
-  // 自己検証: merc / fixture / label / lnglat は不変（SYN_MERC・oct26Ll2Merc の写しが正しければ一致する）
+  // 自己検証: merc / fixture / label / lnglat は不変（SYN_MERC・fxLl2Merc の写しが正しければ一致する）
   for (let i = 0; i < oldChar.synthetic.length; i++) {
     if (
       syntheticNew[i].fixture !== oldChar.synthetic[i].fixture ||
       syntheticNew[i].label !== oldChar.synthetic[i].label ||
       JSON.stringify(syntheticNew[i].merc) !== JSON.stringify(oldChar.synthetic[i].merc)
     ) {
-      console.error(`[自己検証 NG] OCT26_CHARACTERIZATION.synthetic[${i}] の不変フィールドが不一致`);
+      console.error(`[自己検証 NG] FX_CHARACTERIZATION.synthetic[${i}] の不変フィールドが不一致`);
       process.exit(1);
     }
   }
@@ -484,11 +484,11 @@ newLineByNo.set(422, `const OCT26_CHARACTERIZATION = ${JSON.stringify(newChar)};
       JSON.stringify(nobeokaNew[i].lnglat) !== JSON.stringify(oldChar.nobeoka[i].lnglat) ||
       JSON.stringify(nobeokaNew[i].merc) !== JSON.stringify(oldChar.nobeoka[i].merc)
     ) {
-      console.error(`[自己検証 NG] OCT26_CHARACTERIZATION.nobeoka[${i}] の不変フィールドが不一致`);
+      console.error(`[自己検証 NG] FX_CHARACTERIZATION.nobeoka[${i}] の不変フィールドが不一致`);
       process.exit(1);
     }
   }
-  console.log("OCT26_CHARACTERIZATION 層番号: pass／不変フィールド（merc・fixture・label・lnglat）: pass");
+  console.log("FX_CHARACTERIZATION 層番号: pass／不変フィールド（merc・fixture・label・lnglat）: pass");
 }
 
 // ─── 差分を検証して書き出し ────────────────────────────────────────────────────

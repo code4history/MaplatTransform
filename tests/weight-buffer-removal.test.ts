@@ -1,8 +1,8 @@
-// oct26-m12-t1a（DES-M12-WEIGHTBUFFER-0919）の性質テスト。
+// weight_buffer の廃止の性質テスト。
 // weight_buffer を読み込まない Transform が、三角形内・扇形外挿とも純アフィンであることの機械判定。
 //
-// データセット ALL（t1 設計 §5）:
-//   - tests/compiled/*.json のうち compiled（oct26_m2_t4_synthetic.json を除く 31 件。
+// データセット ALL:
+//   - tests/compiled/*.json のうち compiled（visible_layers_synthetic.json を除く 31 件。
 //     legacy 形式 { compiled: … } は .compiled を取る）
 //   - tests/mapdata/*.json の compiled と sub_maps[].compiled（6 ファイル）
 // 件数はディレクトリから動的に取り、増減したら失敗させる（31・mapdata 6）。
@@ -27,7 +27,7 @@ interface Entry {
 
 const compiledEntries: Entry[] = [];
 for (const f of fs.readdirSync(COMPILED_DIR).sort()) {
-  if (!f.endsWith(".json") || f === "oct26_m2_t4_synthetic.json") continue;
+  if (!f.endsWith(".json") || f === "visible_layers_synthetic.json") continue;
   const raw = JSON.parse(
     fs.readFileSync(path.join(COMPILED_DIR, f), "utf-8"),
   ) as Record<string, unknown>;
@@ -50,7 +50,7 @@ for (const f of mapdataFiles) {
 
 const ALL: Entry[] = [...compiledEntries, ...mapdataEntries];
 
-// ─── 除外表（t1 設計 §5。実装者が書き換えない。食い違えば失敗させる） ────
+// ─── 除外表（実装者が書き換えない。食い違えば失敗させる） ──────────
 
 // [cid, 格子, 1e-5超の上限点数, 最大誤差(px)の上限]
 const RT_EXCLUDE: [string, "P" | "I", number, number][] = [
@@ -96,7 +96,7 @@ function coordObjectIs(a: number[], b: number[]): boolean {
   return Object.is(a[0], b[0]) && Object.is(a[1], b[1]);
 }
 
-/** GRID-P（t1 設計 §5）: 当該方向の対応点 bbox を各辺 20% 広げた 41×41 */
+/** GRID-P: 当該方向の対応点 bbox を各辺 20% 広げた 41×41 */
 function gridP(c: Compiled, dir: "forw" | "bakw"): [number, number][] {
   const idx = dir === "forw" ? 0 : 1;
   const xs = c.points.map((p) => p[idx][0]);
@@ -108,7 +108,7 @@ function gridP(c: Compiled, dir: "forw" | "bakw"): [number, number][] {
   return makeGrid(x0, y0, w, h, 0.2, 40);
 }
 
-/** GRID-I（t1 設計 §5）: 順方向の画像範囲を各辺 30% 広げた 61×61 */
+/** GRID-I: 順方向の画像範囲を各辺 30% 広げた 61×61 */
 function gridI(c: Compiled): [number, number][] {
   let x0: number;
   let y0: number;
@@ -244,7 +244,7 @@ const TS = [0.25, 0.5, 0.8];
 
 // ─── 件数と除外表の照合 ──────────────────────────────────────────────────────
 
-describe("m12 weight_buffer 廃止（oct26-m12-t1a）", () => {
+describe("weight_buffer 廃止", () => {
   it("ALL の件数: compiled 31・mapdata 6", () => {
     expect(compiledEntries.length).toBe(31);
     expect(mapdataFiles.filter((f) => f.endsWith(".json")).length).toBe(6);
@@ -258,8 +258,8 @@ describe("m12 weight_buffer 廃止（oct26-m12-t1a）", () => {
     for (const cid of Object.keys(EDGE_BACK_EXCLUDE)) expect(allCids.has(cid)).toBe(true);
   });
 
-  // ── T-BIT（AC-1） ──────────────────────────────────────────────────────────
-  describe("T-BIT (AC-1)", () => {
+  // ── T-BIT ──────────────────────────────────────────────────────────
+  describe("T-BIT", () => {
     for (const entry of ALL) {
       it(`${entry.name}`, () => {
         const c = entry.compiled;
@@ -328,8 +328,8 @@ describe("m12 weight_buffer 廃止（oct26-m12-t1a）", () => {
     });
   });
 
-  // ── T-GCP（AC-2a） ─────────────────────────────────────────────────────────
-  describe("T-GCP (AC-2a)", () => {
+  // ── T-GCP ────────────────────────────────────────────────────────
+  describe("T-GCP", () => {
     for (const entry of ALL) {
       it(`${entry.name}`, () => {
         const c = entry.compiled;
@@ -360,8 +360,8 @@ describe("m12 weight_buffer 廃止（oct26-m12-t1a）", () => {
     });
   });
 
-  // ── T-EDGE（AC-2b） ────────────────────────────────────────────────────────
-  describe("T-EDGE (AC-2b)", () => {
+  // ── T-EDGE ───────────────────────────────────────────────────────
+  describe("T-EDGE", () => {
     for (const entry of ALL) {
       it(`${entry.name}（順）`, () => {
         const c = entry.compiled;
@@ -462,8 +462,8 @@ describe("m12 weight_buffer 廃止（oct26-m12-t1a）", () => {
     });
   });
 
-  // ── T-RT（AC-2c） ──────────────────────────────────────────────────────────
-  describe("T-RT (AC-2c)", () => {
+  // ── T-RT ─────────────────────────────────────────────────────────
+  describe("T-RT", () => {
     for (const entry of ALL) {
       it(`${entry.name}`, () => {
         const c = entry.compiled;
@@ -497,8 +497,8 @@ describe("m12 weight_buffer 廃止（oct26-m12-t1a）", () => {
     }
   });
 
-  // ── T-AFF（AC-3） ──────────────────────────────────────────────────────────
-  describe("T-AFF (AC-3)", () => {
+  // ── T-AFF ──────────────────────────────────────────────────────────
+  describe("T-AFF", () => {
     for (const entry of ALL) {
       it(`${entry.name}`, () => {
         const c = entry.compiled;
@@ -565,8 +565,8 @@ describe("m12 weight_buffer 廃止（oct26-m12-t1a）", () => {
     });
   });
 
-  // ── T-LEGACY（AC-5・§5） ───────────────────────────────────────────────────
-  describe("T-LEGACY (AC-5)", () => {
+  // ── T-LEGACY ─────────────────────────────────────────────────────
+  describe("T-LEGACY", () => {
     for (const key of ["naramachi_yasui_bunko", "fushimijo_maplat", "burakita-2024"]) {
       it(`${key}`, () => {
         const raw = JSON.parse(
