@@ -1,26 +1,26 @@
 /**
- * scripts/m12-regenerate-cases.mjs
+ * scripts/regenerate-affine-cases.mjs
  *
- * oct26-m12-t1b（DES-M12-WEIGHTBUFFER-0919）: tests/cases/*.json の期待値（逆方向の列
+ * weight_buffer の廃止に合わせて、tests/cases/*.json の期待値（逆方向の列
  * bakw）を、新 dist（weight_buffer を無視して三角形内・扇形外挿を純アフィンにする
  * Transform）で再計算して書き換える。
  *
  * 使い方:
- *   node scripts/m12-regenerate-cases.mjs --lib <dist/maplat_transform.js> --tests <tests ディレクトリ>
+ *   node scripts/regenerate-affine-cases.mjs --lib <dist/maplat_transform.js> --tests <tests ディレクトリ>
  *     検査のみ（1 件でも外れたら書き出さずに exit 1）
  *   … --write
  *     検査を全件通した場合のみ cases を書き出す
  *   … --self-test
  *     origin/master の cases（重み付きの旧出力）を検査 2 にかけて「外れが出る」ことを確かめる
  *
- * 検査（t1 設計 §6.1。1 件でも外れたら書き出さず exit 1）:
+ * 検査（1 件でも外れたら書き出さず exit 1）:
  *   1. forw の列が原本と JSON 値として Object.is 等価（対象ケースは forw を据え置く）
  *   2. bakw' = T.transform(forw) が独立アフィン参照（stateFull の stateTriangle、凸包外は
  *      扇形三角形のいずれか）と相対 1e-12 以内
  *   3. transform.test.ts が逆方向を検査する条件（strict_status !== "strict_error" && !bounds）の
  *      ケースは T.transform(bakw', true) が forw と各成分 0.005 未満
  *
- * 書き出し整形（t1 設計 §6.1）:
+ * 書き出し整形:
  *   原本が JSON.stringify(x, null, 2) と一致する整形ならその整形（末尾改行の有無は原本に合わせる）。
  *   そうでなければ 1 ケース 1 行（"[\n" + "  " + JSON.stringify(case) を ",\n" で連結 + "\n]"）。
  */
@@ -44,7 +44,7 @@ function parseArgs(argv) {
 }
 const args = parseArgs(process.argv.slice(2));
 if (!args.lib || !args.tests) {
-  console.error("usage: node scripts/m12-regenerate-cases.mjs --lib <dist> --tests <dir> [--write] [--self-test]");
+  console.error("usage: node scripts/regenerate-affine-cases.mjs --lib <dist> --tests <dir> [--write] [--self-test]");
   process.exit(2);
 }
 
@@ -52,7 +52,7 @@ const libPath = path.resolve(args.lib);
 const testsDir = path.resolve(args.tests);
 const { Transform } = await import(libPath);
 
-// ─── ヘルパー（t1a テスト tests/m12-weight-buffer-removal.test.ts と同一の定義） ──
+// ─── ヘルパー（t1a テスト tests/weight-buffer-removal.test.ts と同一の定義） ──
 /** 独立アフィン参照（Cramer 式。geometry.ts の式を写さない） */
 function independentAffine(tri, p) {
   const s = tri.geometry.coordinates[0];

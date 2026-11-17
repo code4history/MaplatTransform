@@ -36,7 +36,7 @@ Vitest is the canonical runner: `pnpm test` (single pass), `pnpm test:watch` (TD
 
 ## Commit & Pull Request Guidelines
 
-History uses Conventional Commits (`fix:`) alongside task-ID-prefixed messages (e.g. `m15-t1:`, `c2-m4-t2:`, `c2-m1-t1:`) tied to this project's internal task tracking. Keep commits scoped to one concern; when a message is not part of a tracked task, prefer a Conventional Commits prefix and mention ticket numbers when relevant. Pull requests must describe the transformation scenario, reference any affected `cases/` assets, and attach screenshots or logs for demo/regression evidence. Ensure lint, typecheck, and tests pass locally before requesting review.
+History uses Conventional Commits (`fix:`) alongside messages prefixed with internal task identifiers. Keep commits scoped to one concern; when a message is not part of a tracked task, prefer a Conventional Commits prefix and mention ticket numbers when relevant. Pull requests must describe the transformation scenario, reference any affected `cases/` assets, and attach screenshots or logs for demo/regression evidence. Ensure lint, typecheck, and tests pass locally before requesting review.
 
 ## Release & Configuration Tips
 

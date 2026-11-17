@@ -1,8 +1,8 @@
 # MaplatTransform openspec 時代の開発履歴索引
 
-> 本ファイルは openspec ワークフロー（〜2026年）時代に作成された開発提案・記録を、那由多開発サイクル形式の履歴として集約した索引です。
+> 本ファイルは openspec ワークフロー（〜2026年）時代に作成された開発提案・記録を、現在の開発の手順の形式の履歴として集約した索引です。
 > 原文は `docs/history/openspec-legacy/<change-id>/` 配下にそのまま保存されています（内容は変更していません）。
-> 那由多開発サイクルについては `docs/superpowers/`（存在する場合）を参照してください。
+> 現在の開発規則は `docs/superpowers/`（存在する場合）を参照してください。
 >
 > 「推定時期」は、各 change の `proposal.md` に対して `git log --follow --diff-filter=A -1` を実行して得た**作成日**（そのファイルが最初にリポジトリへ追加されたコミットの日付）を記載しています。archive 化の際にディレクトリ名へ日付プレフィックスが付与される・リネームされるケースがあるため、ディレクトリ単位ではなくファイル単位で `--follow` を適用し、archive 日ではなく作成日を実測しています。
 
@@ -20,7 +20,7 @@
 
 | 項目 | 推定時期 | 目的 | 現状との乖離 | 原文 |
 |---|---|---|---|---|
-| project.md | 2025-12-18（6a62ca2） | openspecワークフロー導入時点でのMaplatTransformプロジェクト概要・規約を記述したもの。 | 那由多開発サイクル移行（本索引作成）により、開発プロセス・ドキュメント体系は本ファイル群へ置き換わっている。参考情報として保存。 | [原文](openspec-legacy/_project-snapshot/project.md) |
+| project.md | 2025-12-18（6a62ca2） | openspecワークフロー導入時点でのMaplatTransformプロジェクト概要・規約を記述したもの。 | 現在の開発の手順への移行（本索引作成）により、開発プロセス・ドキュメント体系は本ファイル群へ置き換わっている。参考情報として保存。 | [原文](openspec-legacy/_project-snapshot/project.md) |
 | specs/tooling/spec.md | 2025-12-18（2655813） | Vite/ESLint統一に関する仕様（unify-libs-turf-vite由来）。 | 完了済み変更の仕様記録として保存。 | [原文](openspec-legacy/_project-snapshot/specs/tooling/spec.md) |
 | specs/package-metadata/spec.md | 2025-12-18（496fe75） | package.jsonメタデータに関する仕様（package-json-maplattin由来）。 | 完了済み変更の仕様記録として保存。 | [原文](openspec-legacy/_project-snapshot/specs/package-metadata/spec.md) |
 | specs/dependencies/spec.md | 2025-12-18（2655813） | Turf.js依存統合に関する仕様（unify-libs-turf-vite由来）。 | 完了済み変更の仕様記録として保存。 | [原文](openspec-legacy/_project-snapshot/specs/dependencies/spec.md) |
