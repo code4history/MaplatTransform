@@ -258,8 +258,8 @@ describe("weight_buffer 廃止", () => {
     for (const cid of Object.keys(EDGE_BACK_EXCLUDE)) expect(allCids.has(cid)).toBe(true);
   });
 
-  // ── transform output is bit-identical with or without weight_buffer ──────────────────────────────────────────────────────────
-  describe("transform output is bit-identical with or without weight_buffer", () => {
+  // ── transform output is bit-identical whether weight_buffer is kept, emptied or removed ──────────────────────────────────────────────────────────
+  describe("transform output is bit-identical whether weight_buffer is kept, emptied or removed", () => {
     for (const entry of ALL) {
       it(`${entry.name}`, () => {
         const c = entry.compiled;
@@ -328,8 +328,8 @@ describe("weight_buffer 廃止", () => {
     });
   });
 
-  // ── GCPs map exactly forward and within 1e-12 backward ────────────────────────────────────────────────────────
-  describe("GCPs map exactly forward and within 1e-12 backward", () => {
+  // ── GCPs map exactly forward and within 1e-12 backward (backward only when strict or loose) ────────────────────────────────────────────────────────
+  describe("GCPs map exactly forward and within 1e-12 backward (backward only when strict or loose)", () => {
     for (const entry of ALL) {
       it(`${entry.name}`, () => {
         const c = entry.compiled;
@@ -360,8 +360,8 @@ describe("weight_buffer 廃止", () => {
     });
   });
 
-  // ── extrapolation outside the hull is affine (1e-12) ───────────────────────────────────────────────────────
-  describe("extrapolation outside the hull is affine (1e-12)", () => {
+  // ── points on triangle edges match linear interpolation (forward 1e-12, backward within the exclusion table) ───────────────────────────────────────────────────────
+  describe("points on triangle edges match linear interpolation (forward 1e-12, backward within the exclusion table)", () => {
     for (const entry of ALL) {
       it(`${entry.name}（順）`, () => {
         const c = entry.compiled;
@@ -462,8 +462,8 @@ describe("weight_buffer 廃止", () => {
     });
   });
 
-  // ── round-trip error stays within the exclusion table ─────────────────────────────────────────────────────────
-  describe("round-trip error stays within the exclusion table", () => {
+  // ── round trip returns within 1e-5 (listed entries within the exclusion table, strict only) ─────────────────────────────────────────────────────────
+  describe("round trip returns within 1e-5 (listed entries within the exclusion table, strict only)", () => {
     for (const entry of ALL) {
       it(`${entry.name}`, () => {
         const c = entry.compiled;
@@ -497,8 +497,8 @@ describe("weight_buffer 廃止", () => {
     }
   });
 
-  // ── triangle interiors match an independent affine reference (1e-12) ──────────────────────────────────────────────────────────
-  describe("triangle interiors match an independent affine reference (1e-12)", () => {
+  // ── grid points match an independent affine of their triangle or extrapolation fan (1e-12) ──────────────────────────────────────────────────────────
+  describe("grid points match an independent affine of their triangle or extrapolation fan (1e-12)", () => {
     for (const entry of ALL) {
       it(`${entry.name}`, () => {
         const c = entry.compiled;
