@@ -2,7 +2,7 @@ import { featureCollection, point } from "@turf/turf";
 import type { Position } from "geojson";
 import { normalizeEdges } from "./edgeutils.ts";
 import { indexesToTri } from "./triangulation.ts";
-import type { PropertyTriKey } from "./geometry.ts";
+import type { PropertyTriKey, VerticesParams } from "./geometry.ts";
 import type {
   Compiled,
   CompiledLegacy,
@@ -62,12 +62,17 @@ export function restoreLegacyState(
 ): LegacyStatePayload {
   const normalized = normalizeLegacyStructure(rawCompiled);
   const tins = normalized.tins!;
+  const verticesParams = normalized.vertices_params as
+    | VerticesParamsBD
+    | undefined;
+  // vertices_params を持たない旧データは今までどおり読む（三角網の外の点だけが変換できない）
+  if (verticesParams != null) assertVerticesParams(verticesParams);
   return {
     compiled: normalized,
     tins,
     points: rebuildLegacyPoints(tins),
     strictStatus: normalized.strict_status,
-    verticesParams: normalized.vertices_params as VerticesParamsBD,
+    verticesParams: verticesParams as VerticesParamsBD,
     centroid: normalized.centroid,
     kinks: normalized.kinks
   };
@@ -81,13 +86,59 @@ function deriveStrictStatus(compiled: Compiled): StrictStatus {
 }
 
 function buildVerticesParams(compiled: Compiled): VerticesParamsBD {
+  // 頂点の三角形を作る数は vertices_points の長さで決まるので、作る前に配列であることを確かめる
+  if (
+    !Array.isArray(compiled.vertices_params) ||
+    !Array.isArray(compiled.vertices_points)
+  ) {
+    throw new Error(
+      "Invalid compiled data: vertices_params and vertices_points must be arrays"
+    );
+  }
   const params: VerticesParamsBD = {
     forw: [compiled.vertices_params[0]],
     bakw: [compiled.vertices_params[1]]
   };
   params.forw![1] = buildVertexTins(compiled, false);
   params.bakw![1] = buildVertexTins(compiled, true);
+  assertVerticesParams(params);
   return params;
+}
+
+/**
+ * 復元した頂点の表（向きごとに [角度の表, 頂点の三角形の表]）の形を確かめる。
+ * 新形式・旧形式のどちらの読み込みもこの 1 つを通る。
+ *
+ * 三角網の外の点の変換は角度の表を端から端まで回るので、表が本物の配列で、
+ * 長さが頂点の三角形の数と同じで、有限の数だけが並んでいることを読み込みで確かめる。
+ * 長さの照合を先に行うので、要素を見る回数も頂点の三角形の数までになる
+ */
+function assertVerticesParams(params: VerticesParamsBD): void {
+  if (typeof params !== "object") {
+    throw new Error("Invalid compiled data: vertices_params has a wrong shape");
+  }
+  (["forw", "bakw"] as const).forEach(side => {
+    const entry: VerticesParams | null | undefined = params[side];
+    if (entry == null) return;
+    const label = `vertices_params.${side}`;
+    const radians: unknown = entry[0];
+    const tins: unknown = entry[1];
+    if (!Array.isArray(radians) || !Array.isArray(tins)) {
+      throw new Error(`Invalid compiled data: ${label} must hold two arrays`);
+    }
+    if (radians.length !== tins.length) {
+      throw new Error(
+        `Invalid compiled data: ${label} must have one angle per vertex`
+      );
+    }
+    for (let i = 0; i < radians.length; i++) {
+      if (typeof radians[i] !== "number" || !Number.isFinite(radians[i])) {
+        throw new Error(
+          `Invalid compiled data: ${label} must contain only finite numbers`
+        );
+      }
+    }
+  });
 }
 
 function buildVertexTins(compiled: Compiled, bakw: boolean) {
