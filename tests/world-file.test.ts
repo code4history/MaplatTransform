@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import fs from "node:fs";
 import { polygon } from "@turf/turf";
 import {
@@ -98,10 +98,53 @@ describe("WorldFileSurface", () => {
     expect(() => new WorldFileSurface({ crs: { epsg: 4326, proj4: "+proj=merc" }, worldFile, wh: [10, 10] })).toThrow(/一致しない/);
     expect(() => new WorldFileSurface({ crs: { epsg: 4326, proj4: "+proj=longlat +datum=WGS84 +axis=neu" }, worldFile, wh: [10, 10] })).toThrow(/axis/);
     expect(() => new WorldFileSurface({ crs: { epsg: 4326, wkt: "GEOGCS[]" }, worldFile, wh: [10, 10] })).toThrow(/WKT/);
-    for (const proj4 of ["", "+proj=longlat +datum=WGS84 +no_defs=", "+proj=longlat +datum=WGS84 +no_defs +axis=", "+proj=longlat +datum=WGS84 +towgs84=1e-324,0,0", "+proj=longlat +datum=WGS84 +wktext"]) {
+    for (const proj4 of ["", "+proj=longlat +datum=WGS84 +no_defs=", "+proj=longlat +datum=WGS84 +no_defs +axis=", "+proj=longlat +datum=WGS84 +towgs84=1e-324,0,0"]) {
       expect(() => new WorldFileSurface({ crs: { epsg: 4326, proj4 }, worldFile, wh: [10, 10] })).toThrow();
     }
     expect(() => new WorldFileSurface({ crs: { epsg: 4326, proj4: "+proj=longlat +datum=WGS84 +no_defs" }, worldFile, wh: [10, 10] })).not.toThrow();
+  });
+
+  it("projinfo の EPSG:3857 定義を受け、値付き wktext と大文字の軸を拒否する", () => {
+    const proj4 = "+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0 +k=1 +units=m +nadgrids=@null +wktext +no_defs +type=crs";
+    const create = (definition: string) =>
+      new WorldFileSurface({ crs: { epsg: 3857, proj4: definition }, worldFile, wh: [10, 10] });
+    expect(() => create(proj4)).not.toThrow();
+    expect(() => create(proj4.replace("+wktext", "+wktext="))).toThrow(/wktext/);
+    expect(() => create(proj4.replace("+wktext", "+wktext=yes"))).toThrow();
+    expect(() => create(proj4.replace("+wktext", "+axis=enu"))).not.toThrow();
+    expect(() => create(proj4.replace("+wktext", "+axis=ENU"))).toThrow(/axis/);
+  });
+
+  it("内蔵エンジンの 4326 は極まで往復でき、3857 への投影で緯度を制限する", () => {
+    const geographic = { epsg: 4326 };
+    const mercator = { epsg: 3857 };
+    for (const lonLat of [[0, 89], [180, 90], [-180, -90]]) {
+      expect(builtinProjectionEngine.toLonLat(lonLat, geographic)).toEqual(lonLat);
+      expect(builtinProjectionEngine.fromLonLat(lonLat, geographic)).toEqual(lonLat);
+      expect(builtinProjectionEngine.fromLonLat(lonLat, mercator)).toBe(false);
+    }
+    for (const lonLat of [[0, 90.001], [0, -90.001], [180.001, 0]]) {
+      expect(builtinProjectionEngine.toLonLat(lonLat, geographic)).toBe(false);
+      expect(builtinProjectionEngine.fromLonLat(lonLat, geographic)).toBe(false);
+    }
+  });
+
+  it("3857 のアフィン結果は範囲内でそのまま返し、端点のすぐ外を拒否する", () => {
+    const surface = new WorldFileSurface({
+      crs: { epsg: 3857 },
+      worldFile: { xScale: 0.01, xSkew: 0, xOrigin: MERC_MAX, ySkew: 0, yScale: -0.01, yOrigin: -MERC_MAX },
+      wh: [10, 10]
+    });
+    const xy = [0.499997, 0.499997];
+    const merc = surface.transform(xy);
+    expect(merc).toEqual([MERC_MAX - 3e-8, -MERC_MAX + 3e-8]);
+    if (merc === false) throw new Error("端点近傍の順変換失敗");
+    const restored = surface.transform(merc, true);
+    expect(restored).not.toBe(false);
+    if (restored === false) throw new Error("端点近傍の逆変換失敗");
+    expect(Math.hypot(restored[0] - xy[0], restored[1] - xy[1])).toBeLessThanOrEqual(1e-6);
+    expect(surface.transform([0.500003, 0.5])).toBe(false);
+    expect(surface.transform([0.5, 0.500003])).toBe(false);
   });
 
   it("PROJ の type と towgs84 は指定された正規形だけを除外する", () => {
@@ -280,6 +323,32 @@ describe("MapTransform layered data", () => {
     expect(map.getLayerTransform(0)?.priority).toBe(10);
     expect(map.getLayerTransform(0)?.importance).toBe(9);
   });
+
+  it.each([
+    [10, 9, 0, [0, 1]],
+    [0, 9, 1, [1]],
+    [-1, 9, 1, [1]],
+    [10, -1, 0, [1, 0]]
+  ] as const)(
+    "表示候補の被覆と順序にメイン層の priority %s と importance %s を使う",
+    (priority, importance, expectedForwardLayer, expectedVisibleLayers) => {
+      const map = new MapTransform();
+      const bounds = [[0, 0], [100, 0], [100, 100], [0, 100]];
+      const options = { crs: { epsg: 3857 }, worldFile, wh: [100, 100] };
+      map.setLayeredMapData({
+        main: { kind: "worldFile", ...options, priority, importance },
+        sub_maps: [{ kind: "worldFile", ...options, priority: 0, importance: 2, bounds }]
+      });
+      const xy = [50, 50];
+      const merc = worldFileToCrs(worldFile, xy);
+      const forwardLayer = map.xy2MercWithLayer(xy);
+      const backLayers = map.merc2XyWithLayer(merc);
+      const visible = map.merc2XyVisibleLayers(merc);
+      expect(visible.map(([index]) => index)).toEqual(expectedVisibleLayers);
+      expect(forwardLayer).toEqual([expectedForwardLayer, merc]);
+      expect(visible).toEqual(backLayers.filter(result => result && visible.some(([index]) => index === result[0])));
+    }
+  );
 });
 
 describe("compiled outerTransform", () => {
@@ -348,6 +417,80 @@ describe("compiled outerTransform", () => {
         }
       }
     }
+  });
+
+  it("回転した V3 の外周 3,564 点と両側で順逆に往復する", () => {
+    const compiled = structuredClone(compiledV3Fixture) as CompiledWorldFileOuter;
+    const wf = { xScale: 1.7, xSkew: 0.8, xOrigin: 15000000.5, ySkew: 0.8, yScale: -1.7, yOrigin: 4000000.5 };
+    const toMerc = (xy: number[]) => worldFileToCrs(wf, xy);
+    compiled.outerTransform = "worldFile";
+    compiled.worldFile = wf;
+    compiled.points = compiled.points.map(([xy]) => [xy, toMerc(xy)]);
+    compiled.vertices_points = compiled.vertices_points.map(([xy]) => [xy, toMerc(xy)]);
+    const transform = new Transform();
+    transform.setCompiled(compiled);
+    const ring = compiled.vertices_points.map(pair => pair[0]);
+    const distance = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+    let edgeProbes = 0;
+    let edgeFailures = 0;
+    let roundTripFailures = 0;
+    let maxError = 0;
+    for (let i = 0; i < ring.length; i++) {
+      const [ax, ay] = ring[i];
+      const [bx, by] = ring[(i + 1) % ring.length];
+      const length = Math.hypot(bx - ax, by - ay);
+      for (let sample = 1; sample < 100; sample++) {
+        const t = sample / 100;
+        for (const offset of [0, -1e-4, 1e-4]) {
+          const xy = [ax + (bx - ax) * t - (by - ay) * offset / length, ay + (by - ay) * t + (bx - ax) * offset / length];
+          const merc = toMerc(xy);
+          const backward = transform.transform(merc, true, true);
+          if (offset === 0) {
+            edgeProbes++;
+            if (backward === false) edgeFailures++;
+          }
+          const forward = transform.transform(xy, false, true);
+          const backThenForward = backward !== false && transform.transform(backward, false, true);
+          const forwardThenBack = forward !== false && transform.transform(forward, true, true);
+          if (backward === false || forward === false || backThenForward === false || forwardThenBack === false) {
+            roundTripFailures++;
+            continue;
+          }
+          maxError = Math.max(maxError, distance(xy, backward), distance(xy, forwardThenBack),
+            distance(xy, crsToWorldFilePixel(wf, backThenForward)), distance(xy, crsToWorldFilePixel(wf, forward)));
+        }
+      }
+    }
+    expect(edgeProbes).toBe(3564);
+    expect(edgeFailures).toBe(0);
+    expect(roundTripFailures).toBe(0);
+    expect(maxError).toBeLessThanOrEqual(1e-7);
+  });
+
+  it.each([0, 1] as const)("B の輪の面 %s で隣り合わない辺が交差すると拒否する", side => {
+    const compiled: CompiledWorldFileOuter = { ...structuredClone(compiledV3Fixture), outerTransform: "worldFile", worldFile };
+    const ring = compiled.vertices_points;
+    [ring[0][side], ring[10][side]] = [ring[10][side], ring[0][side]];
+    expect(() => new Transform().setCompiled(compiled)).toThrow(/交差/);
+  });
+
+  it("follow の地理面の y を内部規約にそろえた輪だけを受け入れる", () => {
+    const compiled: CompiledWorldFileOuter = { ...structuredClone(compiledV3Fixture), outerTransform: "worldFile", worldFile, yaxisMode: "follow" };
+    const toInternal = (xy: number[]) => {
+      const [x, y] = worldFileToCrs(worldFile, xy);
+      return [x, -y];
+    };
+    compiled.points = compiled.points.map(([xy]) => [xy, toInternal(xy)]);
+    compiled.vertices_points = compiled.vertices_points.map(([xy]) => [xy, toInternal(xy)]);
+    const transform = new Transform();
+    expect(() => transform.setCompiled(compiled)).not.toThrow();
+    for (const xy of [compiled.vertices_points[0][0], [-12345, -6789]]) {
+      const merc = worldFileToCrs(worldFile, xy);
+      expect(transform.transform(xy, false, true)).toEqual(merc);
+      expect(transform.transform(merc, true, true)).toEqual(xy.map(value => expect.closeTo(value, 8)));
+    }
+    compiled.vertices_points = compiled.vertices_points.map(([xy, [x, y]]) => [xy, [x, -y]]);
+    expect(() => new Transform().setCompiled(compiled)).toThrow(/巻き方向/);
   });
 
   it("outerTransform が省略された compiled は従来の外挿結果を保つ", () => {
@@ -439,6 +582,31 @@ describe("compiled outerTransform", () => {
     expect(() => transform.transform([], true, true)).toThrow(/strict_error/);
     transform.setCompiled({ ...structuredClone(compiledFixture), strict_status: "strict_error", yaxisMode: "follow" });
     expect(() => transform.transform([], true, true)).toThrow(/strict_error/);
+  });
+
+  it("三角網の復元と上書きされた索引構築をそれぞれ 1 回だけ行う", () => {
+    const compiled = structuredClone(compiledFixture);
+    const readTriangles = vi.spyOn(compiled.tins_points[0], "map");
+    const baseIndex = vi.spyOn(Transform.prototype, "addIndexedTin");
+    class HookTransform extends Transform {
+      override addIndexedTin() {
+        expect(this.tins?.forw?.features).toHaveLength(compiled.tins_points[0].length);
+        expect(this.yaxisMode).toBe("invert");
+        super.addIndexedTin();
+      }
+    }
+    const transform = new HookTransform();
+    compiled.yaxisMode = "follow";
+    const overriddenIndex = vi.spyOn(transform, "addIndexedTin");
+    try {
+      transform.setCompiled(compiled);
+      expect(readTriangles).toHaveBeenCalledTimes(compiled.tins_points.length === 1 ? 2 : 1);
+      expect(overriddenIndex).toHaveBeenCalledTimes(1);
+      expect(baseIndex).toHaveBeenCalledTimes(1);
+      expect(transform.yaxisMode).toBe("follow");
+    } finally {
+      baseIndex.mockRestore();
+    }
   });
 
   it("setCompiled の成功時に modern の wh 保持と legacy の旧フィールド更新順を保つ", () => {

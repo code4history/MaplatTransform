@@ -5,12 +5,6 @@ import { crsToWorldFilePixel, validateWorldFile, worldFileToCrs } from "./world-
 
 const EARTH_RADIUS = 6378137;
 const MAX_MERCATOR_LATITUDE = (180 / Math.PI) * Math.atan(Math.sinh(Math.PI));
-// world file 式の結果を正規端点へ戻す場合だけ使う丸め幅。入力範囲検査には使わない。
-const COMPUTED_ENDPOINT_TOLERANCE = Number.EPSILON * MERC_MAX * 16;
-
-/** PROJ の許可表から除く語。裸の +no_defs、+type=crs、+axis=enu、ゼロ towgs84 のみ。 */
-const PROJ4_IGNORED_TOKENS = ["+no_defs", "+type=crs", "+axis=enu", "+towgs84=0,0,0"] as const;
-
 function finitePair(coord: number[]): boolean {
   return coord.length >= 2 && Number.isFinite(coord[0]) && Number.isFinite(coord[1]);
 }
@@ -30,15 +24,15 @@ export function validateCrs(crs: CrsObject): void {
     const key = rawKey.toLowerCase();
     const value = rawValue.join("=");
     const hasValue = rawValue.length > 0;
-    if (key === "axis" && (!hasValue || value.toLowerCase() !== "enu")) {
+    if (key === "axis" && (!hasValue || value !== "enu")) {
       throw new Error("worldFile は東・北の順で書き、+axis を外してください");
     }
-    if (key === "no_defs" && !hasValue && PROJ4_IGNORED_TOKENS.includes("+no_defs")) return "";
+    if ((key === "no_defs" || key === "wktext") && !hasValue) return "";
     if (hasValue && value === "") throw new Error(`+${key}= は許可されていません`);
     if (key === "wktext") throw new Error("+wktext は許可されていません");
     if (key === "type" && !hasValue) throw new Error("+type は値が必要です");
-    if (key === "type" && value.toLowerCase() === "crs" && PROJ4_IGNORED_TOKENS.includes("+type=crs")) return "";
-    if (key === "axis" && value.toLowerCase() === "enu" && PROJ4_IGNORED_TOKENS.includes("+axis=enu")) return "";
+    if (key === "type" && value.toLowerCase() === "crs") return "";
+    if (key === "axis") return "";
     if (key === "towgs84") {
       const parts = value.split(",");
       if (!hasValue || parts.some(part => part.trim() === "")) throw new Error("+towgs84 は数値の値が必要です");
@@ -46,7 +40,7 @@ export function validateCrs(crs: CrsObject): void {
         const mantissa = part.trim().split(/[eE]/, 1)[0].replace(/[+\-.]/g, "");
         return Number.isFinite(Number(part)) && !/[1-9]/.test(mantissa);
       });
-      if (allZero && PROJ4_IGNORED_TOKENS.includes("+towgs84=0,0,0")) return "";
+      if (allZero) return "";
     }
     const normalized = value
       ? value.split(",").map(part => {
@@ -69,7 +63,7 @@ export function validateCrs(crs: CrsObject): void {
 export const builtinProjectionEngine: ProjectionEngine = {
   toLonLat(coord, crs) {
     if (!finitePair(coord)) return false;
-    if (crs.epsg === 4326) return Math.abs(coord[0]) <= 180 && Math.abs(coord[1]) <= MAX_MERCATOR_LATITUDE ? [coord[0], coord[1]] : false;
+    if (crs.epsg === 4326) return Math.abs(coord[0]) <= 180 && Math.abs(coord[1]) <= 90 ? [coord[0], coord[1]] : false;
     if (crs.epsg !== 3857 || Math.abs(coord[0]) > MERC_MAX || Math.abs(coord[1]) > MERC_MAX) return false;
     const x = coord[0];
     const y = coord[1];
@@ -79,14 +73,14 @@ export const builtinProjectionEngine: ProjectionEngine = {
     ];
   },
   fromLonLat(coord, crs) {
-    if (!finitePair(coord) || Math.abs(coord[0]) > 180 || Math.abs(coord[1]) > MAX_MERCATOR_LATITUDE) return false;
-    const bounded = coord;
-    if (crs.epsg === 4326) return [bounded[0], bounded[1]];
-    if (crs.epsg !== 3857) return false;
-    const longitude = (bounded[0] * Math.PI) / 180;
-    const latitude = (bounded[1] * Math.PI) / 180;
-    const result = [Math.abs(bounded[0]) === 180 ? Math.sign(bounded[0]) * MERC_MAX : EARTH_RADIUS * longitude,
-      Math.abs(bounded[1]) === MAX_MERCATOR_LATITUDE ? Math.sign(bounded[1]) * MERC_MAX : EARTH_RADIUS * Math.log(Math.tan(Math.PI / 4 + latitude / 2))];
+    if (!finitePair(coord) || Math.abs(coord[0]) > 180) return false;
+    const [lon, lat] = coord;
+    if (crs.epsg === 4326) return Math.abs(lat) <= 90 ? [lon, lat] : false;
+    if (crs.epsg !== 3857 || Math.abs(lat) > MAX_MERCATOR_LATITUDE) return false;
+    const longitude = (lon * Math.PI) / 180;
+    const latitude = (lat * Math.PI) / 180;
+    const result = [Math.abs(lon) === 180 ? Math.sign(lon) * MERC_MAX : EARTH_RADIUS * longitude,
+      Math.abs(lat) === MAX_MERCATOR_LATITUDE ? Math.sign(lat) * MERC_MAX : EARTH_RADIUS * Math.log(Math.tan(Math.PI / 4 + latitude / 2))];
     return result.every(Number.isFinite) ? result : false;
   }
 };
@@ -163,9 +157,7 @@ export class WorldFileSurface implements SurfaceLike {
     if (!backward) {
       const inCrs = this.xyToCrs(coord);
       if (this.crs.epsg === 3857) {
-        const snap = (value: number) => Math.abs(Math.abs(value) - MERC_MAX) <= COMPUTED_ENDPOINT_TOLERANCE ? Math.sign(value) * MERC_MAX : value;
-        const generated = [snap(inCrs[0]), snap(inCrs[1])];
-        return generated.every(value => Number.isFinite(value) && Math.abs(value) <= MERC_MAX) ? generated : false;
+        return inCrs.every(value => Math.abs(value) <= MERC_MAX) ? inCrs : false;
       }
       const geographic = this.projectionEngine.toLonLat(inCrs, this.crs);
       if (geographic === false || !finitePair(geographic)) return false;

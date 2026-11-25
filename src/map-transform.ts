@@ -292,7 +292,7 @@ export class MapTransform {
    *    本図（層 0）は紙の内外を判定せず常に対応層の候補とする（紙外の除外は呼び出し側が行う）
    * 2. 対応層の座標が、より priority の高い sub_map の `xyBounds` 内なら覆われている。
    *    その高 priority 層自身が当該地点に対応するかは関係しない。
-   *    本図は priority 0 の sub_map の `xyBounds` 内でも覆われている
+   *    本図と sub_map がともに priority 0 の場合も、本図はその sub_map の `xyBounds` 内で覆われている
    * 3. 同じ priority の sub_map どうしは互いを覆わない
    * 4. 覆われていない対応層を importance 降順 → priority 降順 → 層番号昇順で並べ、上限を切らずに全件返す
    * 5. 覆われていない対応層が無ければ空配列（表現範囲外）。`undefined`（旧 hide 表現）は返さない
@@ -305,9 +305,9 @@ export class MapTransform {
 
     const allTins = this._getAllTinsWithIndex();
     const prio = (index: number): number =>
-      index === 0 ? 0 : (this.subTins[index - 1].priority ?? 0);
+      (index === 0 ? this.mainTin?.priority : this.subTins[index - 1].priority) ?? 0;
     const imp = (index: number): number =>
-      index === 0 ? 0 : (this.subTins[index - 1].importance ?? 0);
+      (index === 0 ? this.mainTin?.importance : this.subTins[index - 1].importance) ?? 0;
     const inBounds = (index: number, xy: number[]): boolean =>
       index === 0 || booleanPointInPolygon(point(xy), this.subTins[index - 1].xyBounds);
 
@@ -324,7 +324,7 @@ export class MapTransform {
         ({ index }) =>
           index !== 0 &&
           index !== hit.index &&
-          (prio(index) > prio(hit.index) || (hit.index === 0 && prio(index) === 0)) &&
+          (prio(index) > prio(hit.index) || (hit.index === 0 && prio(0) === 0 && prio(index) === 0)) &&
           inBounds(index, hit.xy)
       );
 
