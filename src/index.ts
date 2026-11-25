@@ -23,7 +23,9 @@ export { rotateVerticesTriangle, counterTri } from "./triangulation.ts";
 export type { Edge, EdgeSet, EdgeSetLegacy } from "./edgeutils.ts";
 export { normalizeEdges } from "./edgeutils.ts";
 export { Transform, format_version } from "./transform.ts";
-export { WorldFileSurface, builtinProjectionEngine } from "./world-file-surface.ts";
+export { WorldFileSurface } from "./world-file-surface.ts";
+export { builtinProjectionEngine, createProj4ProjectionEngine } from "./projection.ts";
+export type { Proj4Factory } from "./projection.ts";
 export type { WorldFileSurfaceOptions } from "./world-file-surface.ts";
 export { worldFileToCrs, crsToWorldFilePixel, validateWorldFile } from "./world-file.ts";
 

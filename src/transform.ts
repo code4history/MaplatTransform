@@ -234,10 +234,16 @@ export class Transform {
       this.outerRings = this.outerVertices
         ? { forw: this.outerVertices.map(pair => pair[0] as number[]), bakw: this.outerVertices.map(pair => pair[1] as number[]) }
         : undefined;
+      this.validateCompiledProjection();
     } catch (error) {
       Object.assign(this, previous);
       throw error;
     }
+  }
+
+  /** 層固有の検査を、失敗時に compiled の適用を取り消せる位置で行う */
+  protected validateCompiledProjection(): void {
+    // 通常の三角網には投影定義がない。
   }
 
   private applyModernState(state: ModernStatePayload): void {

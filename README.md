@@ -24,7 +24,7 @@ MaplatTransform is open-source under the Apache License 2.0 (from version 0.5.3)
 ## Key Features
 
 - Coordinate transformation between two plane coordinate systems using Maplat-generated TIN definitions (forward and backward, topology-preserving)
-- World-file affine surfaces in EPSG:3857 or EPSG:4326, including mixed TIN and world-file layers
+- Mixed TIN and world-file layers with built-in EPSG:3857 and EPSG:4326 support and optional proj4js projections
 - V2/V3 compiled format support (V3 adds N-boundary vertices for higher accuracy)
 - Multiple coordinate system support: standard orthogonal, Y-axis inverted, bird's-eye view distorted
 - Sub-map selection, viewport transformation, and cross-map viewport sync (Processings 2–4)
@@ -88,7 +88,7 @@ synchronization, see the
 
 `MapTransform.setLayeredMapData()` accepts a world-file surface as the main map or a sub-map. A world file uses the standard six named coefficients; `xOrigin` and `yOrigin` refer to the center of the upper-left pixel. Pixel coordinates use the image corner as the origin, so the conversion subtracts one half pixel before applying the affine coefficients.
 
-World-file output coordinates are always ordered east then north, regardless of the CRS authority axis order. The built-in projection engine is exported as `builtinProjectionEngine`. For a world-file layer, `getLayerTransform()` returns `null`; use `getSurfaceTransform()` to access its `SurfaceLike` transform.
+**World-file output and the geographic side of a TIN use east, north order, regardless of the CRS authority axis order.** The built-in projection engine is exported as `builtinProjectionEngine`. For a world-file layer, `getLayerTransform()` returns `null`; use `getSurfaceTransform()` to access its `SurfaceLike` transform.
 
 TIN layers may opt into `outerTransform: "worldFile"` inside their compiled payload. Type this payload as `CompiledWorldFileOuter`: `worldFile` and `vertices_points` are required, while `vertices_params` and `centroid_point` may be omitted. Existing `Compiled`, `MapData`, and `SubMapData` keep their original required fields.
 
@@ -110,9 +110,51 @@ map.setLayeredMapData({
 const surface = map.getSurfaceTransform(0);
 ```
 
-The named helpers `worldFileToCrs(worldFile, xy)` and `crsToWorldFilePixel(worldFile, crs)` implement the forward and inverse affine equations. `validateWorldFile(worldFile)` rejects non-finite, singular, and mirrored transforms. The built-in projection engine supports EPSG:3857 and EPSG:4326; other CRS definitions are rejected in this release.
+The named helpers `worldFileToCrs(worldFile, xy)` and `crsToWorldFilePixel(worldFile, crs)` implement the forward and inverse affine equations. `validateWorldFile(worldFile)` rejects non-finite, singular, and mirrored transforms.
 
 For compiled TIN data, `outerTransform` is an optional camelCase compiled key. It defaults to `"extrapolate"`, preserving existing behavior. `"worldFile"` applies its sibling `worldFile` coefficients outside the quadrilateral formed by the `vertices_points` ring; this mode requires `worldFile` and can omit `vertices_params` and `centroid_point`.
+
+### CRS definitions and proj4js
+
+```typescript
+type CrsObject = {
+  epsg?: number;
+  authority?: string;
+  code?: string | number;
+  proj4?: string;
+  wkt?: string;
+};
+```
+
+Provide an `epsg` code, an `authority` and `code` pair, or a `proj4` definition. EPSG:3857 and EPSG:4326 use built-in formulas. A TIN layer with an omitted `crs` uses EPSG:3857. Every other CRS needs a `proj4` definition and an injected projection engine. For example, use `{ authority: "ESRI", code: "102012", proj4: definition }` for a non-EPSG identity. The viewer keeps non-built-in identifiers as metadata. Verify that their definitions agree when creating map data.
+
+`proj4` is an optional peer dependency. Install it in the application with `pnpm add "proj4@^2.22.0"`. An ES application can load it when a map supplies a `proj4` definition.
+
+```typescript
+import { createProj4ProjectionEngine, MapTransform } from '@maplat/transform';
+
+const { default: proj4 } = await import('proj4');
+const projectionEngine = createProj4ProjectionEngine(proj4);
+const map = new MapTransform();
+map.setLayeredMapData({
+  main: {
+    kind: 'worldFile',
+    crs: { epsg: 32654, proj4: '+proj=utm +zone=54 +datum=WGS84 +units=m' },
+    worldFile: {
+      xScale: 2, xSkew: 0, xOrigin: 500000,
+      ySkew: 0, yScale: -2, yOrigin: 3985000
+    },
+    wh: [1000, 1000],
+    projectionEngine
+  }
+});
+```
+
+Pass the same engine as `projectionEngine` on each TIN or world-file layer that needs it, or in the `WorldFileSurface` constructor. With a UMD build, load proj4js in the application and pass its `proj4` function to the factory. Both layer types expose transformations to and from EPSG:3857. TIN interpolation, extrapolation, and the world-file outer transform all use the layer CRS before projection.
+
+When `proj4` accompanies EPSG:3857 or EPSG:4326, the proj4js engine checks the four map corners and the center against the built-in formulas. A difference over 1 mm for EPSG:3857 or 1e-8 degrees for EPSG:4326 rejects the map at load time. Without proj4js, these two CRSs also accept the known definitions supported by the built-in engine.
+
+Definitions may omit `+axis` or specify `+axis=enu`. Loading rejects WKT-only definitions and proj4 definitions containing grids (`+nadgrids` except `@null`, or `+geoidgrids`), `+proj=pipeline`, `hgridshift`, or `vgridshift`.
 
 ### API reference
 
