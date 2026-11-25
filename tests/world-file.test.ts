@@ -3,6 +3,7 @@ import fs from "node:fs";
 import { polygon } from "@turf/turf";
 import {
   crsToWorldFilePixel,
+  builtinProjectionEngine,
   validateWorldFile,
   worldFileToCrs,
   WorldFileSurface,
@@ -93,6 +94,10 @@ describe("WorldFileSurface", () => {
     expect(() => new WorldFileSurface({ crs: { epsg: 4326, proj4: "+proj=merc" }, worldFile, wh: [10, 10] })).toThrow(/一致しない/);
     expect(() => new WorldFileSurface({ crs: { epsg: 4326, proj4: "+proj=longlat +datum=WGS84 +axis=neu" }, worldFile, wh: [10, 10] })).toThrow(/axis/);
     expect(() => new WorldFileSurface({ crs: { epsg: 4326, wkt: "GEOGCS[]" }, worldFile, wh: [10, 10] })).toThrow(/WKT/);
+    for (const proj4 of ["", "+proj=longlat +datum=WGS84 +no_defs=", "+proj=longlat +datum=WGS84 +no_defs +axis=", "+proj=longlat +datum=WGS84 +towgs84=1e-324,0,0", "+proj=longlat +datum=WGS84 +wktext"]) {
+      expect(() => new WorldFileSurface({ crs: { epsg: 4326, proj4 }, worldFile, wh: [10, 10] })).toThrow();
+    }
+    expect(() => new WorldFileSurface({ crs: { epsg: 4326, proj4: "+proj=longlat +datum=WGS84 +no_defs" }, worldFile, wh: [10, 10] })).not.toThrow();
   });
 
   it("PROJ の type と towgs84 は指定された正規形だけを除外する", () => {
@@ -127,9 +132,19 @@ describe("WorldFileSurface", () => {
     expect(mercatorMaximum).toEqual([MERC_MAX, MERC_MAX]);
     if (mercatorMaximum === false) throw new Error("3857 端点変換失敗");
     expect(mercatorEdge.transform(mercatorMaximum, true)).toEqual([0.5, 0.5]);
+    expect(mercatorEdge.transform([MERC_MAX + 3e-8, 0], true)).toBe(false);
     const nonFiniteEngine = { toLonLat: () => [NaN, Infinity], fromLonLat: () => [NaN, Infinity] };
     const invalid = new WorldFileSurface({ crs: { epsg: 4326 }, worldFile, wh: [10, 10], projectionEngine: nonFiniteEngine });
     expect(invalid.transform([1, 1])).toBe(false);
+    expect(new WorldFileSurface({ crs: { epsg: 3857 }, worldFile: { xScale: 1e-310, xSkew: 0, xOrigin: 0, ySkew: 0, yScale: -2, yOrigin: 0 }, wh: [10, 10] }).transform([1, 0], true)).toBe(false);
+    const narrow = new WorldFileSurface({ crs: { epsg: 3857 }, worldFile: { xScale: 1e-5, xSkew: 0, xOrigin: 0, ySkew: 0, yScale: -1e-5, yOrigin: 0 }, wh: [10, 10] });
+    const narrowMerc = narrow.transform([0.503, 0.5]);
+    expect(narrowMerc).toEqual([expect.closeTo(3e-8, 20), 0]);
+    expect(narrow.transform(narrowMerc as number[], true)).toEqual([expect.closeTo(0.503, 12), 0.5]);
+    expect(builtinProjectionEngine.toLonLat([MERC_MAX + 3e-8, 0], { epsg: 3857 })).toBe(false);
+    expect(builtinProjectionEngine.fromLonLat([180 + 5e-11, 0], { epsg: 3857 })).toBe(false);
+    expect(builtinProjectionEngine.fromLonLat([0, maxLat + 5e-11], { epsg: 3857 })).toBe(false);
+    expect(builtinProjectionEngine.fromLonLat([-180, -maxLat], { epsg: 3857 })).toEqual([-MERC_MAX, -MERC_MAX]);
   });
 
   it.each([3857, 4326])("EPSG:%s の world file を内外格子で1e-6画素以内に往復する", epsg => {
@@ -250,6 +265,17 @@ describe("MapTransform layered data", () => {
     expect(map.maxxy).toBe(8192);
     expect(map.getSurfaceTransform(1)).toBeInstanceOf(Transform);
   });
+
+  it("新 API のメイン層の priority と importance を選択に反映する", () => {
+    const map = new MapTransform();
+    map.setLayeredMapData({
+      main: { kind: "tin", compiled: structuredClone(compiledFixture), priority: 10, importance: 9 },
+      sub_maps: [{ kind: "tin", compiled: structuredClone(compiledFixture), priority: 1, bounds: [[0, 0], [100, 0], [100, 100], [0, 100]] }]
+    });
+    expect(map.xy2MercWithLayer([10, 10])).toMatchObject([0, expect.any(Array)]);
+    expect(map.getLayerTransform(0)?.priority).toBe(10);
+    expect(map.getLayerTransform(0)?.importance).toBe(9);
+  });
 });
 
 describe("compiled outerTransform", () => {
@@ -275,11 +301,11 @@ describe("compiled outerTransform", () => {
 
   it("四辺形の外周4辺で順逆変換が world file と連続する", () => {
     const compiled = structuredClone(compiledFixture) as CompiledWorldFileOuter;
-    const wf = { xScale: 2, xSkew: 0, xOrigin: 500, ySkew: 0, yScale: -2, yOrigin: 500 };
+    const wf = { xScale: 1, xSkew: 0, xOrigin: 15000000.5, ySkew: 0, yScale: -1, yOrigin: 4000000.5 };
     const toMerc = (xy: number[]) => worldFileToCrs(wf, xy);
     compiled.outerTransform = "worldFile";
     compiled.worldFile = wf;
-    compiled.points = compiled.points.map(([xy]) => [xy, [toMerc(xy)[0] + 10, toMerc(xy)[1] - 10]]);
+    compiled.points = compiled.points.map(([xy]) => [xy, toMerc(xy)]);
     compiled.vertices_points = compiled.vertices_points.map(([xy]) => [xy, toMerc(xy)]);
     const transform = new Transform();
     transform.setCompiled(compiled);
@@ -292,21 +318,27 @@ describe("compiled outerTransform", () => {
         return corners.some(point => point[0] === a[0] && point[1] === a[1]) && corners.some(point => point[0] === b[0] && point[1] === b[1]);
       });
       expect(edgeTriangles).toHaveLength(1);
-      const midpoint = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
-      const toward = [center[0] - midpoint[0], center[1] - midpoint[1]];
-      const length = Math.hypot(toward[0], toward[1]);
-      const inside = [midpoint[0] + toward[0] / length * 1e-10, midpoint[1] + toward[1] / length * 1e-10];
-      const outside = [midpoint[0] - toward[0] / length * 1e-10, midpoint[1] - toward[1] / length * 1e-10];
-      for (const xy of [midpoint, inside, outside]) {
-        const actual = transform.transform(xy, false, true);
-        expect(actual).not.toBe(false);
-        if (actual === false) throw new Error("外周の順変換失敗");
-        const expected = toMerc(xy);
-        expect(Math.hypot(...crsToWorldFilePixel(wf, actual).map((v, axis) => v - crsToWorldFilePixel(wf, expected)[axis]))).toBeLessThanOrEqual(1e-9);
-        const restored = transform.transform(actual, true, true);
-        expect(restored).not.toBe(false);
-        if (restored === false) throw new Error("外周の逆変換失敗");
-        expect(Math.hypot(restored[0] - xy[0], restored[1] - xy[1])).toBeLessThanOrEqual(1e-7);
+      for (let sample = 1; sample <= 9; sample++) {
+        const t = sample / 10;
+        const edgePoint = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+        const toward = [center[0] - edgePoint[0], center[1] - edgePoint[1]];
+        const length = Math.hypot(toward[0], toward[1]);
+        const probes = [
+          edgePoint,
+          [edgePoint[0] + toward[0] / length * 1e-4, edgePoint[1] + toward[1] / length * 1e-4],
+          [edgePoint[0] - toward[0] / length * 1e-4, edgePoint[1] - toward[1] / length * 1e-4]
+        ];
+        for (const xy of probes) {
+          const actual = transform.transform(xy, false, true);
+          expect(actual).not.toBe(false);
+          if (actual === false) throw new Error("外周の順変換失敗");
+          const expected = toMerc(xy);
+          expect(Math.hypot(...crsToWorldFilePixel(wf, actual).map((v, axis) => v - crsToWorldFilePixel(wf, expected)[axis]))).toBeLessThanOrEqual(1e-8);
+          const restored = transform.transform(actual, true, true);
+          expect(restored).not.toBe(false);
+          if (restored === false) throw new Error("外周の逆変換失敗");
+          expect(Math.hypot(restored[0] - xy[0], restored[1] - xy[1])).toBeLessThanOrEqual(1e-7);
+        }
       }
     }
   });
@@ -378,5 +410,51 @@ describe("compiled outerTransform", () => {
     if (merc === false) throw new Error("B の順変換失敗");
     expect(transform.transform(merc, true)).toBe(false);
     expect(transform.transform(merc, true, true)).toEqual(xy);
+  });
+
+  it("既定経路の strict_error は座標に触れる前に判定する", () => {
+    const transform = new Transform();
+    transform.setCompiled({ ...structuredClone(compiledFixture), strict_status: "strict_error" });
+    expect(() => transform.transform([], true, true)).toThrow(/strict_error/);
+    transform.setCompiled({ ...structuredClone(compiledFixture), strict_status: "strict_error", yaxisMode: "follow" });
+    expect(() => transform.transform([], true, true)).toThrow(/strict_error/);
+  });
+
+  it("setCompiled の成功時に modern の wh 保持と legacy の旧フィールド更新順を保つ", () => {
+    const transform = new Transform();
+    const withWh = { ...structuredClone(compiledFixture), wh: [123, 456] };
+    transform.setCompiled(withWh);
+    const withoutWh = structuredClone(compiledFixture);
+    delete withoutWh.wh;
+    transform.setCompiled(withoutWh);
+    expect(transform.wh).toEqual([123, 456]);
+    const bounds = [[0, 0], [100, 0], [100, 100], [0, 100]];
+    transform.setCompiled({ ...structuredClone(compiledFixture), bounds, boundsPolygon: polygon([[...bounds, bounds[0]]]), wh: [200, 200] });
+    const oldBounds = transform.bounds;
+    const legacyBase = new Transform();
+    legacyBase.setCompiled(structuredClone(compiledFixture));
+    const legacy = { tins: legacyBase.tins, strict_status: legacyBase.strict_status, vertices_params: legacyBase.vertices_params, centroid: legacyBase.centroid, wh: [50, 50] } as unknown as CompiledLegacy;
+    transform.setCompiled(legacy);
+    expect(transform.bounds).toBe(oldBounds);
+    expect(transform.transform([1000, 1000])).toBe(false);
+    class HookTransform extends Transform { called = false; override addIndexedTin() { this.called = true; super.addIndexedTin(); } }
+    const hooked = new HookTransform();
+    hooked.setCompiled(structuredClone(compiledFixture));
+    expect(hooked.called).toBe(true);
+    class FailingHookTransform extends Transform { fail = false; override addIndexedTin() { super.addIndexedTin(); if (this.fail) throw new Error("索引失敗"); } }
+    const rollback = new FailingHookTransform();
+    rollback.setCompiled(structuredClone(compiledFixture));
+    const oldValue = rollback.transform([0, 0], false, true);
+    rollback.fail = true;
+    expect(() => rollback.setCompiled({ ...structuredClone(compiledFixture), yaxisMode: "follow" })).toThrow(/索引失敗/);
+    expect(rollback.transform([0, 0], false, true)).toEqual(oldValue);
+  });
+
+  it("明示 null の CRS、寸法なし、非有限 bounds 寸法を入力エラーにする", () => {
+    const map = new MapTransform();
+    expect(() => map.setLayeredMapData({ main: { kind: "tin", compiled: structuredClone(compiledFixture), crs: null } as never })).toThrow(/CRS/);
+    expect(() => new WorldFileSurface({ crs: null, worldFile, wh: [10, 10] } as never)).toThrow(/CRS/);
+    expect(() => new WorldFileSurface({ crs: { epsg: 3857 }, worldFile, bounds: undefined } as never)).toThrow(/wh または bounds/);
+    expect(() => new WorldFileSurface({ crs: { epsg: 3857 }, worldFile, bounds: [[-Number.MAX_VALUE, 0], [Number.MAX_VALUE, 0], [0, 1]] })).toThrow(/有限/);
   });
 });

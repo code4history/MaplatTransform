@@ -45,10 +45,14 @@ function pointInRing(coord: number[], vertices: number[][]): boolean {
     const [ax, ay] = vertices[j];
     const [bx, by] = vertices[i];
     const cross = (coord[0] - ax) * (by - ay) - (coord[1] - ay) * (bx - ax);
-    const scale = Math.max(1, Math.abs(ax), Math.abs(ay), Math.abs(bx), Math.abs(by));
-    // 外積の丸め誤差だけを境界上として扱うため、座標の大きさに応じた機械精度を使う。
-    const coordinateTolerance = Number.EPSILON * 16 * scale;
-    const crossTolerance = coordinateTolerance * scale;
+    const dx = bx - ax;
+    const dy = by - ay;
+    const qx = coord[0] - ax;
+    const qy = coord[1] - ay;
+    // 外積の誤差は座標の丸め幅と辺長の積で見積もり、絶対座標の二乗には比例させない。
+    const coordinateTolerance = Number.EPSILON * 16 * Math.max(1, Math.abs(ax), Math.abs(ay), Math.abs(bx), Math.abs(by), Math.abs(coord[0]), Math.abs(coord[1]));
+    const edgeLength = Math.hypot(dx, dy);
+    const crossTolerance = coordinateTolerance * edgeLength + Number.EPSILON * 16 * (Math.abs(qx * dy) + Math.abs(qy * dx));
     if (
       Math.abs(cross) <= crossTolerance &&
       coord[0] >= Math.min(ax, bx) - coordinateTolerance &&
@@ -165,13 +169,19 @@ export class Transform {
     } else {
       candidate.applyLegacyState(restoreLegacyState(normalized as CompiledLegacy));
     }
-    // 復元・索引作成まで候補インスタンスで済ませ、全て成功した後にまとめて反映する。
-    for (const key of ["points", "strict_status", "vertices_params", "centroid", "edges", "edgeNodes", "tins", "kinks", "yaxisMode", "vertexMode", "strictMode", "bounds", "boundsPolygon", "wh", "xy", "indexedTins"] as const) {
-      Object.assign(this, { [key]: candidate[key] });
+    // 候補インスタンスで入力を検証し、成功時は旧版と同じ順でこのインスタンスへ適用する。
+    const keys = ["points", "strict_status", "vertices_params", "centroid", "edges", "edgeNodes", "tins", "kinks", "yaxisMode", "vertexMode", "strictMode", "bounds", "boundsPolygon", "wh", "xy", "indexedTins", "outerTransform", "worldFile", "outerVertices"] as const;
+    const previous = Object.fromEntries(keys.map(key => [key, this[key]]));
+    try {
+      if (isModernCompiled(normalized)) this.applyModernState(restoreModernState(normalized));
+      else this.applyLegacyState(restoreLegacyState(normalized as CompiledLegacy));
+      this.outerTransform = outerTransform ?? "extrapolate";
+      this.worldFile = nextWorldFile;
+      this.outerVertices = outerTransform === "worldFile" ? compiled.vertices_points : undefined;
+    } catch (error) {
+      Object.assign(this, previous);
+      throw error;
     }
-    this.outerTransform = outerTransform ?? "extrapolate";
-    this.worldFile = nextWorldFile;
-    this.outerVertices = outerTransform === "worldFile" ? compiled.vertices_points : undefined;
   }
 
   private applyModernState(state: ModernStatePayload): void {
@@ -353,6 +363,8 @@ export class Transform {
   transform(apoint: number[], backward?: boolean, ignoreBounds?: boolean): number[] | false {
     if (!this.tins)
       throw new Error("setCompiled() must be called before transform()");
+    if (backward && this.strict_status == Transform.STATUS_ERROR && this.outerTransform !== "worldFile")
+      throw new Error('Backward transform is not allowed if strict_status == "strict_error"');
     const originalPoint = apoint;
     if (this.yaxisMode == Transform.YAXIS_FOLLOW && backward) {
       apoint = [apoint[0], -1 * apoint[1]];

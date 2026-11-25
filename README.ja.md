@@ -109,7 +109,7 @@ const surface = map.getSurfaceTransform(0);
 
 公開関数 `worldFileToCrs(worldFile, xy)` と `crsToWorldFilePixel(worldFile, crs)` は、順方向・逆方向のアフィン式を実装します。`validateWorldFile(worldFile)` は有限でない係数、非正則行列、鏡像を拒否します。内蔵投影エンジンが扱う CRS は EPSG:3857 と EPSG:4326 です。それ以外の定義はこの版では読み込みエラーになります。
 
-TIN の compiled データでは、camelCase の任意キー `outerTransform` を使えます。省略時は既存と同じ `"extrapolate"` です。`"worldFile"` は三角形の外を同じ compiled 内の `worldFile` 係数で変換します。このモードでは `worldFile` が必須で、`vertices_params` と `centroid_point` は省略できます。
+TIN の compiled データでは、camelCase の任意キー `outerTransform` を使えます。省略時は既存と同じ `"extrapolate"` です。`"worldFile"` は `vertices_points` が作る四辺形の輪の外を同じ compiled 内の `worldFile` 係数で変換します。このモードでは `worldFile` が必須で、`vertices_params` と `centroid_point` は省略できます。
 
 ### API リファレンス
 

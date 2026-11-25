@@ -5,32 +5,48 @@ import { crsToWorldFilePixel, validateWorldFile, worldFileToCrs } from "./world-
 
 const EARTH_RADIUS = 6378137;
 const MAX_MERCATOR_LATITUDE = (180 / Math.PI) * Math.atan(Math.sinh(Math.PI));
-// MERC_MAX の計算・world file の合成で生じる機械丸め（約 7e-8 m）だけを許す。
-const MERCATOR_TOLERANCE = Number.EPSILON * MERC_MAX * 16;
+// world file 式の結果を正規端点へ戻す場合だけ使う丸め幅。入力範囲検査には使わない。
+const COMPUTED_ENDPOINT_TOLERANCE = Number.EPSILON * MERC_MAX * 16;
+
+/** PROJ の許可表から除く語。裸の +no_defs、+type=crs、+axis=enu、ゼロ towgs84 のみ。 */
+const PROJ4_IGNORED_TOKENS = ["+no_defs", "+type=crs", "+axis=enu", "+towgs84=0,0,0"] as const;
 
 function finitePair(coord: number[]): boolean {
   return coord.length >= 2 && Number.isFinite(coord[0]) && Number.isFinite(coord[1]);
 }
 
 export function validateCrs(crs: CrsObject): void {
+  if (crs === null || typeof crs !== "object") throw new Error("CRS はオブジェクトで指定してください");
   if (crs.epsg !== 3857 && crs.epsg !== 4326) {
     throw new Error(`一期では EPSG:${crs.epsg} の CRS に対応していません`);
   }
   if (crs.wkt && !crs.proj4) {
     throw new Error("一期では WKT だけの CRS 定義に対応していません");
   }
-  if (!crs.proj4) return;
-  const tokens = crs.proj4.trim().split(/\s+/).filter(Boolean).map(token => {
+  if (crs.proj4 === undefined) return;
+  if (crs.proj4.trim() === "") throw new Error("空の proj4 は許可されていません");
+  const tokens = crs.proj4.trim().split(/\s+/).map(token => {
     const [rawKey, ...rawValue] = token.replace(/^\+/, "").split("=");
     const key = rawKey.toLowerCase();
     const value = rawValue.join("=");
-    if (key === "axis" && value !== "enu") {
+    const hasValue = rawValue.length > 0;
+    if (key === "axis" && (!hasValue || value.toLowerCase() !== "enu")) {
       throw new Error("worldFile は東・北の順で書き、+axis を外してください");
     }
-    if ((["no_defs", "wktext"].includes(key) && value === "") || (key === "type" && value.toLowerCase() === "crs") || (key === "axis" && value === "enu")) return "";
+    if (key === "no_defs" && !hasValue && PROJ4_IGNORED_TOKENS.includes("+no_defs")) return "";
+    if (hasValue && value === "") throw new Error(`+${key}= は許可されていません`);
+    if (key === "wktext") throw new Error("+wktext は許可されていません");
+    if (key === "type" && !hasValue) throw new Error("+type は値が必要です");
+    if (key === "type" && value.toLowerCase() === "crs" && PROJ4_IGNORED_TOKENS.includes("+type=crs")) return "";
+    if (key === "axis" && value.toLowerCase() === "enu" && PROJ4_IGNORED_TOKENS.includes("+axis=enu")) return "";
     if (key === "towgs84") {
       const parts = value.split(",");
-      if ([3, 7].includes(parts.length) && parts.every(part => part.trim() !== "" && Number(part) === 0)) return "";
+      if (!hasValue || parts.some(part => part.trim() === "")) throw new Error("+towgs84 は数値の値が必要です");
+      const allZero = [3, 7].includes(parts.length) && parts.every(part => {
+        const mantissa = part.trim().split(/[eE]/, 1)[0].replace(/[+\-.]/g, "");
+        return Number.isFinite(Number(part)) && !/[1-9]/.test(mantissa);
+      });
+      if (allZero && PROJ4_IGNORED_TOKENS.includes("+towgs84=0,0,0")) return "";
     }
     const normalized = value
       ? value.split(",").map(part => {
@@ -53,24 +69,24 @@ export function validateCrs(crs: CrsObject): void {
 export const builtinProjectionEngine: ProjectionEngine = {
   toLonLat(coord, crs) {
     if (!finitePair(coord)) return false;
-    if (crs.epsg === 4326) return Math.abs(coord[1]) <= 90 + 1e-10 ? [coord[0], Math.max(-90, Math.min(90, coord[1]))] : false;
-    if (crs.epsg !== 3857 || Math.abs(coord[0]) > MERC_MAX + MERCATOR_TOLERANCE || Math.abs(coord[1]) > MERC_MAX + MERCATOR_TOLERANCE) return false;
-    const x = Math.max(-MERC_MAX, Math.min(MERC_MAX, coord[0]));
-    const y = Math.max(-MERC_MAX, Math.min(MERC_MAX, coord[1]));
+    if (crs.epsg === 4326) return Math.abs(coord[0]) <= 180 && Math.abs(coord[1]) <= MAX_MERCATOR_LATITUDE ? [coord[0], coord[1]] : false;
+    if (crs.epsg !== 3857 || Math.abs(coord[0]) > MERC_MAX || Math.abs(coord[1]) > MERC_MAX) return false;
+    const x = coord[0];
+    const y = coord[1];
     return [
-      (x / EARTH_RADIUS) * (180 / Math.PI),
-      (2 * Math.atan(Math.exp(y / EARTH_RADIUS)) - Math.PI / 2) * (180 / Math.PI)
+      Math.abs(x) === MERC_MAX ? Math.sign(x) * 180 : (x / EARTH_RADIUS) * (180 / Math.PI),
+      Math.abs(y) === MERC_MAX ? Math.sign(y) * MAX_MERCATOR_LATITUDE : (2 * Math.atan(Math.exp(y / EARTH_RADIUS)) - Math.PI / 2) * (180 / Math.PI)
     ];
   },
   fromLonLat(coord, crs) {
-    // 1e-10 度は逆投影・world file 合成で生じる丸め誤差だけを吸収し、実質的な範囲外を受けない幅。
-    if (!finitePair(coord) || Math.abs(coord[0]) > 180 + 1e-10 || Math.abs(coord[1]) > MAX_MERCATOR_LATITUDE + 1e-10) return false;
-    const bounded = [Math.max(-180, Math.min(180, coord[0])), Math.max(-MAX_MERCATOR_LATITUDE, Math.min(MAX_MERCATOR_LATITUDE, coord[1]))];
-    if (crs.epsg === 4326) return bounded;
+    if (!finitePair(coord) || Math.abs(coord[0]) > 180 || Math.abs(coord[1]) > MAX_MERCATOR_LATITUDE) return false;
+    const bounded = coord;
+    if (crs.epsg === 4326) return [bounded[0], bounded[1]];
     if (crs.epsg !== 3857) return false;
     const longitude = (bounded[0] * Math.PI) / 180;
     const latitude = (bounded[1] * Math.PI) / 180;
-    const result = [EARTH_RADIUS * longitude, EARTH_RADIUS * Math.log(Math.tan(Math.PI / 4 + latitude / 2))];
+    const result = [Math.abs(bounded[0]) === 180 ? Math.sign(bounded[0]) * MERC_MAX : EARTH_RADIUS * longitude,
+      Math.abs(bounded[1]) === MAX_MERCATOR_LATITUDE ? Math.sign(bounded[1]) * MERC_MAX : EARTH_RADIUS * Math.log(Math.tan(Math.PI / 4 + latitude / 2))];
     return result.every(Number.isFinite) ? result : false;
   }
 };
@@ -105,6 +121,7 @@ export class WorldFileSurface implements SurfaceLike {
   constructor(options: WorldFileSurfaceOptions) {
     validateWorldFile(options.worldFile);
     validateCrs(options.crs);
+    if (!options.wh && !options.bounds) throw new Error("WorldFileSurface には wh または bounds が必要です");
     if (options.wh && (!Array.isArray(options.wh) || options.wh.length < 2 || !options.wh.slice(0, 2).every(Number.isFinite))) {
       throw new Error("WorldFileSurface の wh は有限な 2 要素以上の配列でなければなりません");
     }
@@ -122,6 +139,7 @@ export class WorldFileSurface implements SurfaceLike {
       const minX = Math.min(...xs);
       const minY = Math.min(...ys);
       this.wh = [Math.max(...xs) - minX, Math.max(...ys) - minY];
+      if (!this.wh.every(Number.isFinite)) throw new Error("WorldFileSurface の bounds から算出した寸法は有限でなければなりません");
       this.xy = options.xy ?? [minX, minY];
     }
     this.bounds = options.bounds;
@@ -145,9 +163,9 @@ export class WorldFileSurface implements SurfaceLike {
     if (!backward) {
       const inCrs = this.xyToCrs(coord);
       if (this.crs.epsg === 3857) {
-        return Math.abs(inCrs[0]) <= MERC_MAX + MERCATOR_TOLERANCE && Math.abs(inCrs[1]) <= MERC_MAX + MERCATOR_TOLERANCE
-          ? [Math.max(-MERC_MAX, Math.min(MERC_MAX, inCrs[0])), Math.max(-MERC_MAX, Math.min(MERC_MAX, inCrs[1]))]
-          : false;
+        const snap = (value: number) => Math.abs(Math.abs(value) - MERC_MAX) <= COMPUTED_ENDPOINT_TOLERANCE ? Math.sign(value) * MERC_MAX : value;
+        const generated = [snap(inCrs[0]), snap(inCrs[1])];
+        return generated.every(value => Number.isFinite(value) && Math.abs(value) <= MERC_MAX) ? generated : false;
       }
       const geographic = this.projectionEngine.toLonLat(inCrs, this.crs);
       if (geographic === false || !finitePair(geographic)) return false;
@@ -155,9 +173,9 @@ export class WorldFileSurface implements SurfaceLike {
       return result !== false && finitePair(result) ? result : false;
     }
     if (this.crs.epsg === 3857) {
-      return Math.abs(coord[0]) <= MERC_MAX + MERCATOR_TOLERANCE && Math.abs(coord[1]) <= MERC_MAX + MERCATOR_TOLERANCE
-        ? this.crsToXy([Math.max(-MERC_MAX, Math.min(MERC_MAX, coord[0])), Math.max(-MERC_MAX, Math.min(MERC_MAX, coord[1]))])
-        : false;
+      if (Math.abs(coord[0]) > MERC_MAX || Math.abs(coord[1]) > MERC_MAX) return false;
+      const result = this.crsToXy(coord);
+      return finitePair(result) ? result : false;
     }
     const geographic = this.projectionEngine.toLonLat(coord, { epsg: 3857 });
     if (geographic === false || !finitePair(geographic)) return false;

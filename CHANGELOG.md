@@ -11,6 +11,8 @@
 - `WorldFileSurface`・`ProjectionEngine`・`SurfaceLike` と、`MapTransform.setLayeredMapData()`／`getSurfaceTransform()` による層データの読み込みを追加。内蔵投影エンジンは EPSG:3857・4326 に対応。
 - 半画素規約による公開関数 `worldFileToCrs()`・`crsToWorldFilePixel()`・`validateWorldFile()` を追加。非正則行列と鏡像を拒否。
 - compiled の鍵 `outerTransform: "extrapolate" | "worldFile"` と `worldFile` を追加。既定は `"extrapolate"`。world file モードでは `worldFile` が必須で、`vertices_params`・`centroid_point` は省略可能。
+- Restored the original required fields on `Compiled` and added `CompiledWorldFileOuter` for world-file-backed TIN boundaries. Hardened CRS normalization, finite output checks, bounds handling, and indexed outer-boundary lookup.
+- `Compiled` の従来の必須フィールドを復元し、world file 外周を使う三角網用に `CompiledWorldFileOuter` を追加。CRS 正規化、非有限出力、bounds 判定、外周探索を修正。
 
 ### Fixed
 - 細工された変換データで索引づくりが 2 乗になるのを上限で止めた (#25)
@@ -30,5 +32,3 @@
 ### Changed
 - 三角形内の変換で `weight_buffer` を使わず、純アフィンで変換するようにした（重み付き補間が変換品質を下げていたため）
 - 依存関係を更新
-- Restored the original required fields on `Compiled` and added `CompiledWorldFileOuter` for world-file-backed TIN boundaries. Hardened CRS normalization, finite output checks, bounds handling, and indexed outer-boundary lookup.
-- `Compiled` の従来の必須フィールドを復元し、world file 外周を使う三角網用に `CompiledWorldFileOuter` を追加。CRS 正規化、非有限出力、bounds 判定、外周探索を修正。

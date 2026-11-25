@@ -40,16 +40,46 @@ export class MapTransform {
    * @param mapData - メイン TIN と sub_maps の情報
    */
   setMapData(mapData: MapData): void {
-    this.setLayeredMapData({
-      main: { kind: "tin", compiled: mapData.compiled },
-      maxZoom: mapData.maxZoom,
-      sub_maps: mapData.sub_maps?.map(sub => ({ kind: "tin", compiled: sub.compiled, priority: sub.priority, importance: sub.importance, bounds: sub.bounds }))
-    });
+    // 既定 API は従来の構築順と例外順を保つ。
+    const mainTin = new Transform();
+    mainTin.setCompiled(mapData.compiled);
+    this.mainTin = mainTin;
+    if (mapData.maxZoom !== undefined) {
+      this._maxxy = Math.pow(2, mapData.maxZoom) * TILE_SIZE;
+    } else if (mapData.compiled.wh) {
+      const maxDim = Math.max(mapData.compiled.wh[0], mapData.compiled.wh[1]);
+      const maxZoom = Math.ceil(Math.log2(maxDim / TILE_SIZE));
+      this._maxxy = Math.pow(2, maxZoom) * TILE_SIZE;
+    }
+    this.subTins = [];
+    if (mapData.sub_maps) {
+      for (const subMapData of mapData.sub_maps) {
+        const tin = new Transform();
+        tin.setCompiled(subMapData.compiled);
+        const rawBounds = subMapData.bounds ?? subMapData.compiled.bounds;
+        if (!rawBounds) throw new Error("SubMapData must have bounds or compiled.bounds to create xyBounds polygon");
+        const xyBoundsCoords = [...rawBounds, rawBounds[0]];
+        const mercBoundsCoords = xyBoundsCoords.map(xy => {
+          const merc = tin.transform(xy, false);
+          if (!merc) throw new Error("Failed to transform sub-map bounds to mercator");
+          return merc;
+        });
+        this.subTins.push({
+          tin,
+          priority: subMapData.priority,
+          importance: subMapData.importance,
+          xyBounds: polygon([xyBoundsCoords]) as Feature<Polygon>,
+          mercBounds: polygon([mercBoundsCoords]) as Feature<Polygon>
+        });
+      }
+    }
   }
 
   /** TIN と world file の変換面を混在させて読み込む */
   setLayeredMapData(mapData: LayeredMapData): void {
     this.mainTin = this._createSurface(mapData.main);
+    if (mapData.main.priority !== undefined) this.mainTin.priority = mapData.main.priority;
+    if (mapData.main.importance !== undefined) this.mainTin.importance = mapData.main.importance;
     const mainWh = mapData.main.kind === "tin" ? mapData.main.compiled.wh : this.mainTin.wh;
     if (mapData.maxZoom !== undefined) {
       this._maxxy = Math.pow(2, mapData.maxZoom) * TILE_SIZE;
@@ -82,6 +112,7 @@ export class MapTransform {
 
   private _createSurface(data: LayerSurfaceData): SurfaceLike {
     if (data.kind === "worldFile") return new WorldFileSurface(data);
+    if ("crs" in data && data.crs === null) throw new Error("三角網の層の CRS は null にできません");
     if (data.crs) {
       if (data.crs.epsg !== 3857) throw new Error("三角網の層の3857以外のCRSはまだ扱えません");
       validateCrs(data.crs);

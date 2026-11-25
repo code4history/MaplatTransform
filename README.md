@@ -112,7 +112,7 @@ const surface = map.getSurfaceTransform(0);
 
 The named helpers `worldFileToCrs(worldFile, xy)` and `crsToWorldFilePixel(worldFile, crs)` implement the forward and inverse affine equations. `validateWorldFile(worldFile)` rejects non-finite, singular, and mirrored transforms. The built-in projection engine supports EPSG:3857 and EPSG:4326; other CRS definitions are rejected in this release.
 
-For compiled TIN data, `outerTransform` is an optional camelCase compiled key. It defaults to `"extrapolate"`, preserving existing behavior. `"worldFile"` applies its sibling `worldFile` coefficients outside the TIN triangles; this mode requires `worldFile` and can omit `vertices_params` and `centroid_point`.
+For compiled TIN data, `outerTransform` is an optional camelCase compiled key. It defaults to `"extrapolate"`, preserving existing behavior. `"worldFile"` applies its sibling `worldFile` coefficients outside the quadrilateral formed by the `vertices_points` ring; this mode requires `worldFile` and can omit `vertices_params` and `centroid_point`.
 
 ### API reference
 
