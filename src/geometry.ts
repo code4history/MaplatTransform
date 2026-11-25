@@ -24,7 +24,18 @@ export interface IndexedTins {
  * @param tins 三角形群
  * @returns 点を含む三角形、または未定義（点が三角形群の外部にある場合）
  */
-export function hit(point: Feature<Point>, tins: Tins): Tri | undefined {
+export function hit(point: Feature<Point>, tins: Tins, indexedTins?: IndexedTins): Tri | undefined {
+  if (indexedTins) {
+    const coords = point.geometry.coordinates;
+    const x = unitCalc(coords[0], indexedTins.xOrigin, indexedTins.xUnit, indexedTins.gridNum);
+    const y = unitCalc(coords[1], indexedTins.yOrigin, indexedTins.yUnit, indexedTins.gridNum);
+    const candidates = indexedTins.gridCache[x]?.[y] ?? [];
+    for (const index of candidates) {
+      const triangle = tins.features[index];
+      if (triangle && booleanPointInPolygon(point, triangle)) return triangle;
+    }
+    return undefined;
+  }
   for (let i = 0; i < tins.features.length; i++) {
     const inside = booleanPointInPolygon(point, tins.features[i]);
     if (inside) {
@@ -108,10 +119,11 @@ function transformArr(
   centroid?: Feature<Point>,
   _weightBuffer?: WeightBuffer,
   stateTriangle?: Tri,
-  stateSetFunc?: (tri?: Tri) => void
+  stateSetFunc?: (tri?: Tri) => void,
+  resolvedTriangle?: Tri
 ): Position {
-  let tin: Tri | undefined;
-  if (stateTriangle) {
+  let tin: Tri | undefined = resolvedTriangle;
+  if (!tin && stateTriangle) {
     tin = hit(point, featureCollection([stateTriangle]));
   }
   if (!tin) {

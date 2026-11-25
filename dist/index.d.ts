@@ -28,24 +28,25 @@ export declare interface Compiled {
     /** 書き出し側（MaplatTin 2.00704 以降）は常に `{}` を書く。以前の MaplatTransform はこのキーが無いと `transform()` で TypeError になるため、省略してはならない。読み込み側は値を無視する */
     weight_buffer: WeightBufferBD;
     strict_status?: StrictStatus;
-    centroid_point?: Position[];
+    centroid_point: Position[];
     edgeNodes?: PointSet[];
     kinks_points?: Position[];
     yaxisMode?: YaxisMode;
     vertexMode?: VertexMode;
     strictMode?: StrictMode;
-    vertices_params?: number[][];
-    vertices_points?: PointSet[];
+    vertices_params: number[][];
+    vertices_points: PointSet[];
     edges?: EdgeSet[];
     bounds?: number[][];
     boundsPolygon?: Feature<Polygon>;
     wh?: number[];
     xy?: number[];
-    /** 四辺形の外側に使う変換。省略時は従来の外挿を使う */
-    outerTransform?: "extrapolate" | "worldFile";
-    /** outerTransform が worldFile のときの係数 */
-    worldFile?: WorldFile;
 }
+
+export declare type CompiledExtrapolate = Compiled & {
+    outerTransform: "extrapolate";
+    worldFile?: never;
+};
 
 /**
  * Historical serialization format prior to 2.00703.
@@ -56,6 +57,17 @@ export declare interface CompiledLegacy extends Compiled {
     kinks?: KinksBD;
     vertices_params: number[][] & VerticesParamsBD;
     edges: EdgeSet[] & EdgeSetLegacy[];
+}
+
+export declare type CompiledTransformData = Compiled | CompiledWorldFileOuter | CompiledExtrapolate;
+
+/** 外側を world file で補う三角網。既存の Compiled の公開型は変更しない */
+export declare interface CompiledWorldFileOuter extends Omit<Compiled, "centroid_point" | "vertices_params"> {
+    outerTransform: "worldFile";
+    worldFile: WorldFile;
+    vertices_points: PointSet[];
+    centroid_point?: Position[];
+    vertices_params?: number[][];
 }
 
 /**
@@ -409,7 +421,7 @@ export declare type TinsBD = {
 
 export declare interface TinSurfaceData {
     kind: "tin";
-    compiled: Compiled;
+    compiled: CompiledTransformData;
     crs?: CrsObject;
     priority?: number;
     importance?: number;
@@ -461,6 +473,7 @@ export declare class Transform {
     stateBackward?: boolean;
     outerTransform: "extrapolate" | "worldFile";
     worldFile?: WorldFile;
+    private outerVertices?;
     /**
      * Optional properties for MaplatCore extension
      * These properties allow consuming applications to extend Transform instances
@@ -487,7 +500,7 @@ export declare class Transform {
      * 3. TINネットワークの再構築
      * 4. インデックスの作成
      */
-    setCompiled(compiled: Compiled | CompiledLegacy): void;
+    setCompiled(compiled: CompiledTransformData | CompiledLegacy): void;
     private applyModernState;
     private applyLegacyState;
     /**
@@ -528,7 +541,7 @@ export declare class Transform {
  * @param stateSetFunc 状態設定関数（オプション）
  * @returns 変換後の座標
  */
-export declare function transformArr(point: Feature<Point>, tins: Tins, indexedTins?: IndexedTins, verticesParams?: VerticesParams, centroid?: Feature<Point>, _weightBuffer?: WeightBuffer, stateTriangle?: Tri, stateSetFunc?: (tri?: Tri) => void): Position;
+export declare function transformArr(point: Feature<Point>, tins: Tins, indexedTins?: IndexedTins, verticesParams?: VerticesParams, centroid?: Feature<Point>, _weightBuffer?: WeightBuffer, stateTriangle?: Tri, stateSetFunc?: (tri?: Tri) => void, resolvedTriangle?: Tri): Position;
 
 export declare type Tri = Feature<Polygon, PropertiesTri>;
 
@@ -603,7 +616,7 @@ export declare class WorldFileSurface implements SurfaceLike {
     transform(coord: number[], backward?: boolean, _ignoreBounds?: boolean): number[] | false;
 }
 
-export declare type WorldFileSurfaceData = {
+export declare type WorldFileSurfaceData = WorldFileSurfaceDimensions_2 & {
     kind: "worldFile";
     crs: CrsObject;
     worldFile: WorldFile;
@@ -615,10 +628,25 @@ export declare type WorldFileSurfaceData = {
     projectionEngine?: ProjectionEngine;
 };
 
-export declare interface WorldFileSurfaceOptions {
+declare type WorldFileSurfaceDimensions = {
+    wh: number[];
+    bounds?: number[][];
+} | {
+    wh?: undefined;
+    bounds: [number[], number[], number[], ...number[][]];
+};
+
+declare type WorldFileSurfaceDimensions_2 = {
+    wh: number[];
+    bounds?: number[][];
+} | {
+    wh?: undefined;
+    bounds: [number[], number[], number[], ...number[][]];
+};
+
+export declare type WorldFileSurfaceOptions = WorldFileSurfaceDimensions & {
     crs: CrsObject;
     worldFile: WorldFile;
-    wh?: number[];
     xy?: number[];
     bounds?: number[][];
     priority?: number;
@@ -626,7 +654,7 @@ export declare interface WorldFileSurfaceOptions {
     points?: PointSet[];
     edges?: EdgeSet[];
     projectionEngine?: ProjectionEngine;
-}
+};
 
 /** 角原点の画素座標を、半画素規約を使って CRS 座標へ変換する */
 export declare function worldFileToCrs(worldFile: WorldFile, xy: number[]): number[];

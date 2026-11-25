@@ -12,7 +12,10 @@ export type {
   VerticesParamsBD,
   IndexedTinsBD,
   Compiled,
-  CompiledLegacy
+  CompiledLegacy,
+  CompiledWorldFileOuter,
+  CompiledExtrapolate,
+  CompiledTransformData
 } from "./types.ts";
 export type { Tins, Tri, PropertyTriKey } from "./geometry.ts";
 export { transformArr } from "./geometry.ts";

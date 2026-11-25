@@ -62,24 +62,32 @@ export interface Compiled {
   /** 書き出し側（MaplatTin 2.00704 以降）は常に `{}` を書く。以前の MaplatTransform はこのキーが無いと `transform()` で TypeError になるため、省略してはならない。読み込み側は値を無視する */
   weight_buffer: WeightBufferBD;
   strict_status?: StrictStatus;
-  centroid_point?: Position[];
+  centroid_point: Position[];
   edgeNodes?: PointSet[];
   kinks_points?: Position[];
   yaxisMode?: YaxisMode;
   vertexMode?: VertexMode;
   strictMode?: StrictMode;
-  vertices_params?: number[][];
-  vertices_points?: PointSet[];
+  vertices_params: number[][];
+  vertices_points: PointSet[];
   edges?: EdgeSet[];
   bounds?: number[][];
   boundsPolygon?: Feature<Polygon>;
   wh?: number[];
   xy?: number[];
-  /** 四辺形の外側に使う変換。省略時は従来の外挿を使う */
-  outerTransform?: "extrapolate" | "worldFile";
-  /** outerTransform が worldFile のときの係数 */
-  worldFile?: WorldFile;
 }
+
+/** 外側を world file で補う三角網。既存の Compiled の公開型は変更しない */
+export interface CompiledWorldFileOuter extends Omit<Compiled, "centroid_point" | "vertices_params"> {
+  outerTransform: "worldFile";
+  worldFile: WorldFile;
+  vertices_points: PointSet[];
+  centroid_point?: Position[];
+  vertices_params?: number[][];
+}
+
+export type CompiledExtrapolate = Compiled & { outerTransform: "extrapolate"; worldFile?: never };
+export type CompiledTransformData = Compiled | CompiledWorldFileOuter | CompiledExtrapolate;
 
 /** 業界標準の world file 係数。原点は左上画素の中心 */
 export interface WorldFile {
@@ -118,14 +126,16 @@ export interface SurfaceLike {
 
 export interface TinSurfaceData {
   kind: "tin";
-  compiled: Compiled;
+  compiled: CompiledTransformData;
   crs?: CrsObject;
   priority?: number;
   importance?: number;
   bounds?: number[][];
 }
 
-export type WorldFileSurfaceData = {
+type WorldFileSurfaceDimensions = { wh: number[]; bounds?: number[][] } | { wh?: undefined; bounds: [number[], number[], number[], ...number[][]] };
+
+export type WorldFileSurfaceData = WorldFileSurfaceDimensions & {
   kind: "worldFile";
   crs: CrsObject;
   worldFile: WorldFile;

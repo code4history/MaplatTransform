@@ -85,6 +85,10 @@ const restored = transform.transform(transformed, true);
 
 `MapTransform.setLayeredMapData()` は、メイン地図または副地図として world file 面を受け取ります。world file は名前付き6係数を使い、`xOrigin`・`yOrigin` は左上画素の中心を指します。画素座標の原点は画像の角なので、アフィン変換の前に各座標から半画素を引きます。
 
+world file の出力座標は、CRS の公式な軸順によらず東・北の順です。内蔵投影エンジンは `builtinProjectionEngine` という名前で export しています。world file 層では `getLayerTransform()` は `null` を返すため、変換面には `getSurfaceTransform()` を使ってください。
+
+三角網の compiled に `outerTransform: "worldFile"` を持たせる場合は `CompiledWorldFileOuter` 型を使います。`worldFile` と `vertices_points` は必須で、`vertices_params` と `centroid_point` は省略可能です。既存の `Compiled`・`MapData`・`SubMapData` の必須フィールドは維持しています。
+
 ```typescript
 import { MapTransform } from '@maplat/transform';
 

@@ -3,7 +3,7 @@ import { booleanPointInPolygon, point, polygon } from "@turf/turf";
 import { Transform } from "./transform.ts";
 import { zoom2Radius, mercViewpoint2Mercs, mercs2MercViewpoint } from "./viewpoint.ts";
 import { xy2SysCoord, sysCoord2Xy } from "./coord-utils.ts";
-import { WorldFileSurface } from "./world-file-surface.ts";
+import { WorldFileSurface, validateCrs } from "./world-file-surface.ts";
 import type { LayerSurfaceData, LayeredMapData, MapData, SurfaceLike, Viewpoint } from "./types.ts";
 
 /** Internal representation of a loaded sub-map TIN entry */
@@ -43,14 +43,14 @@ export class MapTransform {
     this.setLayeredMapData({
       main: { kind: "tin", compiled: mapData.compiled },
       maxZoom: mapData.maxZoom,
-      sub_maps: mapData.sub_maps?.map(sub => ({ kind: "tin", ...sub }))
+      sub_maps: mapData.sub_maps?.map(sub => ({ kind: "tin", compiled: sub.compiled, priority: sub.priority, importance: sub.importance, bounds: sub.bounds }))
     });
   }
 
   /** TIN と world file の変換面を混在させて読み込む */
   setLayeredMapData(mapData: LayeredMapData): void {
     this.mainTin = this._createSurface(mapData.main);
-    const mainWh = this.mainTin.wh;
+    const mainWh = mapData.main.kind === "tin" ? mapData.main.compiled.wh : this.mainTin.wh;
     if (mapData.maxZoom !== undefined) {
       this._maxxy = Math.pow(2, mapData.maxZoom) * TILE_SIZE;
     } else if (mainWh) {
@@ -82,10 +82,12 @@ export class MapTransform {
 
   private _createSurface(data: LayerSurfaceData): SurfaceLike {
     if (data.kind === "worldFile") return new WorldFileSurface(data);
+    if (data.crs) {
+      if (data.crs.epsg !== 3857) throw new Error("三角網の層の3857以外のCRSはまだ扱えません");
+      validateCrs(data.crs);
+    }
     const transform = new Transform();
     transform.setCompiled(data.compiled);
-    transform.priority = data.priority;
-    transform.importance = data.importance;
     return transform;
   }
 

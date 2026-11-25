@@ -30,3 +30,5 @@
 ### Changed
 - 三角形内の変換で `weight_buffer` を使わず、純アフィンで変換するようにした（重み付き補間が変換品質を下げていたため）
 - 依存関係を更新
+- Restored the original required fields on `Compiled` and added `CompiledWorldFileOuter` for world-file-backed TIN boundaries. Hardened CRS normalization, finite output checks, bounds handling, and indexed outer-boundary lookup.
+- `Compiled` の従来の必須フィールドを復元し、world file 外周を使う三角網用に `CompiledWorldFileOuter` を追加。CRS 正規化、非有限出力、bounds 判定、外周探索を修正。

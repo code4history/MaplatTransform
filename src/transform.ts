@@ -18,6 +18,8 @@ import type { EdgeSet } from "./edgeutils.ts";
 import type {
   Compiled,
   CompiledLegacy,
+  CompiledTransformData,
+  CompiledWorldFileOuter,
   IndexedTinsBD,
   KinksBD,
   LegacyStatePayload,
@@ -36,6 +38,28 @@ import type { WorldFile } from "./types.ts";
 import { crsToWorldFilePixel, validateWorldFile, worldFileToCrs } from "./world-file.ts";
 
 export const format_version = FORMAT_VERSION;
+
+function pointInRing(coord: number[], vertices: number[][]): boolean {
+  let inside = false;
+  for (let i = 0, j = vertices.length - 1; i < vertices.length; j = i++) {
+    const [ax, ay] = vertices[j];
+    const [bx, by] = vertices[i];
+    const cross = (coord[0] - ax) * (by - ay) - (coord[1] - ay) * (bx - ax);
+    const scale = Math.max(1, Math.abs(ax), Math.abs(ay), Math.abs(bx), Math.abs(by));
+    // 外積の丸め誤差だけを境界上として扱うため、座標の大きさに応じた機械精度を使う。
+    const coordinateTolerance = Number.EPSILON * 16 * scale;
+    const crossTolerance = coordinateTolerance * scale;
+    if (
+      Math.abs(cross) <= crossTolerance &&
+      coord[0] >= Math.min(ax, bx) - coordinateTolerance &&
+      coord[0] <= Math.max(ax, bx) + coordinateTolerance &&
+      coord[1] >= Math.min(ay, by) - coordinateTolerance &&
+      coord[1] <= Math.max(ay, by) + coordinateTolerance
+    ) return true;
+    if ((ay > coord[1]) !== (by > coord[1]) && coord[0] < (bx - ax) * (coord[1] - ay) / (by - ay) + ax) inside = !inside;
+  }
+  return inside;
+}
 
 /**
  * 座標変換の基本機能を提供するクラス
@@ -83,6 +107,7 @@ export class Transform {
   stateBackward?: boolean;
   outerTransform: "extrapolate" | "worldFile" = "extrapolate";
   worldFile?: WorldFile;
+  private outerVertices?: PointSet[];
 
   /**
    * Optional properties for MaplatCore extension
@@ -116,28 +141,37 @@ export class Transform {
    * 3. TINネットワークの再構築
    * 4. インデックスの作成
    */
-  setCompiled(compiled: Compiled | CompiledLegacy): void {
-    if (compiled.outerTransform !== undefined &&
-      compiled.outerTransform !== "extrapolate" && compiled.outerTransform !== "worldFile") {
+  setCompiled(compiled: CompiledTransformData | CompiledLegacy): void {
+    const worldFileCompiled = "outerTransform" in compiled;
+    const outerTransform = worldFileCompiled ? compiled.outerTransform : undefined;
+    if (outerTransform !== undefined && outerTransform !== "extrapolate" && outerTransform !== "worldFile") {
       throw new Error("Invalid compiled data: outerTransform must be extrapolate or worldFile");
     }
-    this.outerTransform = compiled.outerTransform ?? "extrapolate";
-    this.worldFile = compiled.worldFile;
-    if (this.outerTransform === "worldFile") {
-      if (!this.worldFile) throw new Error('compiled.outerTransform が "worldFile" ですが worldFile がありません');
-      validateWorldFile(this.worldFile);
-      if (!compiled.centroid_point) {
-        compiled = {
-          ...compiled,
-          centroid_point: compiled.centroid_point ?? [[0, 0], [0, 0]]
-        } as Compiled;
+    const nextWorldFile = worldFileCompiled ? compiled.worldFile : undefined;
+    if (outerTransform === "worldFile") {
+      if (!nextWorldFile) throw new Error('compiled.outerTransform が "worldFile" ですが worldFile がありません');
+      validateWorldFile(nextWorldFile);
+      const vertices = (compiled as CompiledWorldFileOuter).vertices_points;
+      if (!Array.isArray(vertices) || vertices.length !== 4 || vertices.some(pair => !Array.isArray(pair) || pair.length < 2 || pair.some(coord => !Array.isArray(coord) || coord.length < 2 || !coord.slice(0, 2).every(Number.isFinite)))) {
+        throw new Error('compiled.outerTransform が "worldFile" のとき vertices_points は有限な4頂点が必要です');
       }
     }
-    if (isModernCompiled(compiled)) {
-      this.applyModernState(restoreModernState(compiled));
-      return;
+    const normalized = outerTransform === "worldFile"
+      ? { ...compiled, centroid_point: compiled.centroid_point ?? [[0, 0], [0, 0]] } as Compiled
+      : compiled as Compiled;
+    const candidate = new Transform();
+    if (isModernCompiled(normalized)) {
+      candidate.applyModernState(restoreModernState(normalized));
+    } else {
+      candidate.applyLegacyState(restoreLegacyState(normalized as CompiledLegacy));
     }
-    this.applyLegacyState(restoreLegacyState(compiled as CompiledLegacy));
+    // 復元・索引作成まで候補インスタンスで済ませ、全て成功した後にまとめて反映する。
+    for (const key of ["points", "strict_status", "vertices_params", "centroid", "edges", "edgeNodes", "tins", "kinks", "yaxisMode", "vertexMode", "strictMode", "bounds", "boundsPolygon", "wh", "xy", "indexedTins"] as const) {
+      Object.assign(this, { [key]: candidate[key] });
+    }
+    this.outerTransform = outerTransform ?? "extrapolate";
+    this.worldFile = nextWorldFile;
+    this.outerVertices = outerTransform === "worldFile" ? compiled.vertices_points : undefined;
   }
 
   private applyModernState(state: ModernStatePayload): void {
@@ -328,16 +362,24 @@ export class Transform {
       if (!booleanPointInPolygon(tpoint, this.boundsPolygon!)) return false;
     }
     const tins = backward ? this.tins!.bakw : this.tins!.forw;
-    if (this.outerTransform === "worldFile" && tins && !hit(tpoint, tins)) {
-      return backward
-        ? crsToWorldFilePixel(this.worldFile!, originalPoint)
-        : worldFileToCrs(this.worldFile!, originalPoint);
-    }
-    if (backward && this.strict_status == Transform.STATUS_ERROR)
-      throw new Error('Backward transform is not allowed if strict_status == "strict_error"');
     const indexedTins = backward
       ? this.indexedTins?.bakw
       : this.indexedTins?.forw;
+    const boundaryVertices = this.outerVertices?.map(pair => backward ? pair[1] : pair[0]);
+    const inBoundary = boundaryVertices && pointInRing(tpoint.geometry.coordinates, boundaryVertices);
+    const triangle = this.outerTransform === "worldFile" && tins ? hit(tpoint, tins, indexedTins) : undefined;
+    if (this.outerTransform === "worldFile" && tins && !inBoundary) {
+      // B では四辺形の外だけ大域モデルを許す。四辺形内は従来どおり strict_error。
+      const ret = backward
+        ? crsToWorldFilePixel(this.worldFile!, originalPoint)
+        : worldFileToCrs(this.worldFile!, originalPoint);
+      if (!ret.every(Number.isFinite)) return false;
+      if (backward && this.bounds && !ignoreBounds && !booleanPointInPolygon(point(ret), this.boundsPolygon!)) return false;
+      return ret;
+    }
+    if (backward && this.strict_status == Transform.STATUS_ERROR)
+      throw new Error('Backward transform is not allowed if strict_status == "strict_error"');
+    if (this.outerTransform === "worldFile" && !triangle) return false;
     const verticesParams = backward
       ? this.vertices_params!.bakw
       : this.vertices_params!.forw;
@@ -363,7 +405,8 @@ export class Transform {
       centroid,
       undefined,
       stateTriangle,
-      stateSetFunc
+      stateSetFunc,
+      triangle
     );
     if (this.bounds && backward && !ignoreBounds) {
       const rpoint = point(ret);

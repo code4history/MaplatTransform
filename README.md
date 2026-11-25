@@ -88,6 +88,10 @@ synchronization, see the
 
 `MapTransform.setLayeredMapData()` accepts a world-file surface as the main map or a sub-map. A world file uses the standard six named coefficients; `xOrigin` and `yOrigin` refer to the center of the upper-left pixel. Pixel coordinates use the image corner as the origin, so the conversion subtracts one half pixel before applying the affine coefficients.
 
+World-file output coordinates are always ordered east then north, regardless of the CRS authority axis order. The built-in projection engine is exported as `builtinProjectionEngine`. For a world-file layer, `getLayerTransform()` returns `null`; use `getSurfaceTransform()` to access its `SurfaceLike` transform.
+
+TIN layers may opt into `outerTransform: "worldFile"` inside their compiled payload. Type this payload as `CompiledWorldFileOuter`: `worldFile` and `vertices_points` are required, while `vertices_params` and `centroid_point` may be omitted. Existing `Compiled`, `MapData`, and `SubMapData` keep their original required fields.
+
 ```typescript
 import { MapTransform } from '@maplat/transform';
 

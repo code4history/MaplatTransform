@@ -86,7 +86,7 @@ function deriveStrictStatus(compiled: Compiled): StrictStatus {
 }
 
 function buildVerticesParams(compiled: Compiled): VerticesParamsBD {
-  if (compiled.outerTransform === "worldFile" && !compiled.vertices_params) {
+  if ("outerTransform" in compiled && compiled.outerTransform === "worldFile" && !compiled.vertices_params) {
     return { forw: [[], []], bakw: [[], []] };
   }
   // 頂点の三角形を作る数は vertices_points の長さで決まるので、作る前に配列であることを確かめる
