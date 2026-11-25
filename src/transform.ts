@@ -156,8 +156,17 @@ export class Transform {
       if (!nextWorldFile) throw new Error('compiled.outerTransform が "worldFile" ですが worldFile がありません');
       validateWorldFile(nextWorldFile);
       const vertices = (compiled as CompiledWorldFileOuter).vertices_points;
-      if (!Array.isArray(vertices) || vertices.length !== 4 || vertices.some(pair => !Array.isArray(pair) || pair.length < 2 || pair.some(coord => !Array.isArray(coord) || coord.length < 2 || !coord.slice(0, 2).every(Number.isFinite)))) {
-        throw new Error('compiled.outerTransform が "worldFile" のとき vertices_points は有限な4頂点が必要です');
+      // vertices_points は四辺形の上の補助頂点すべて（4 隅＋辺の上の点）を輪の順に並べたもの。4 点に決め打ちしない
+      if (!Array.isArray(vertices) || vertices.length < 4 || vertices.some(pair => !Array.isArray(pair) || pair.length < 2 || pair.some(coord => !Array.isArray(coord) || coord.length < 2 || !coord.slice(0, 2).every(Number.isFinite)))) {
+        throw new Error('compiled.outerTransform が "worldFile" のとき vertices_points は有限な 4 頂点以上の輪が必要です');
+      }
+      const signedArea = (side: 0 | 1) => vertices.reduce((sum, pair, i) => {
+        const next = vertices[(i + 1) % vertices.length][side];
+        return sum + pair[side][0] * next[1] - next[0] * pair[side][1];
+      }, 0);
+      const mapArea = signedArea(0), geoArea = signedArea(1);
+      if (!(Number.isFinite(mapArea) && Number.isFinite(geoArea)) || mapArea === 0 || geoArea === 0) {
+        throw new Error('compiled.outerTransform が "worldFile" のとき vertices_points の輪は面積を持つ必要があります');
       }
     }
     const normalized = outerTransform === "worldFile"

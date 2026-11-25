@@ -17,6 +17,10 @@ const compiledFixture = JSON.parse(
   fs.readFileSync(`${__dirname}/compiled/fushimijo_maplat_v2.json`, "utf8")
 ) as Compiled;
 
+const compiledV3Fixture = JSON.parse(
+  fs.readFileSync(`${__dirname}/compiled/fushimijo_maplat_v3.json`, "utf8")
+) as Compiled;
+
 const worldFile = {
   xScale: 2,
   xSkew: 0.25,
@@ -299,8 +303,11 @@ describe("compiled outerTransform", () => {
     expect(transform.transform(edge, false, true)).toEqual(toMerc(edge));
   });
 
-  it("四辺形の外周4辺で順逆変換が world file と連続する", () => {
-    const compiled = structuredClone(compiledFixture) as CompiledWorldFileOuter;
+  it.each([
+    ["V2（4 隅）", () => compiledFixture],
+    ["V3（4 隅＋辺の上の補助頂点 36 点）", () => compiledV3Fixture]
+  ] as const)("四辺形の外周の辺で順逆変換が world file と連続する: %s", (_label, fixture) => {
+    const compiled = structuredClone(fixture()) as CompiledWorldFileOuter;
     const wf = { xScale: 1, xSkew: 0, xOrigin: 15000000.5, ySkew: 0, yScale: -1, yOrigin: 4000000.5 };
     const toMerc = (xy: number[]) => worldFileToCrs(wf, xy);
     compiled.outerTransform = "worldFile";
@@ -380,6 +387,20 @@ describe("compiled outerTransform", () => {
     if (restored === false) throw new Error("逆変換失敗");
     expect(Math.hypot(restored[0] - xy[0], restored[1] - xy[1])).toBeLessThanOrEqual(1e-6);
     expect(() => transform.transform(compiled.vertices_points[0][1], true, true)).toThrow(/strict_error/);
+  });
+
+  it("worldFile モードの vertices_points は 4 頂点以上で面積を持つ輪を要求する", () => {
+    const base = structuredClone(compiledV3Fixture) as CompiledWorldFileOuter;
+    base.outerTransform = "worldFile";
+    base.worldFile = worldFile;
+    expect(base.vertices_points.length).toBeGreaterThan(4);
+    expect(() => new Transform().setCompiled(structuredClone(base))).not.toThrow();
+    const three = structuredClone(base);
+    three.vertices_points = three.vertices_points.slice(0, 3);
+    expect(() => new Transform().setCompiled(three)).toThrow(/4 頂点以上/);
+    const flat = structuredClone(base);
+    flat.vertices_points = flat.vertices_points.map(([, merc], i) => [[i, 0], merc]);
+    expect(() => new Transform().setCompiled(flat)).toThrow(/面積/);
   });
 
   it("worldFile モードの compiled に worldFile がなければ拒否する", () => {
