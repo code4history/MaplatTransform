@@ -77,9 +77,12 @@ export declare interface CompiledWorldFileOuter extends Omit<Compiled, "centroid
  */
 export declare function counterTri(tri: Tri): Tri;
 
-/** 1期で使える CRS 識別子 */
+/** 呼び出し側から受け取った proj4js を使い、東・北の順で変換する */
+export declare function createProj4ProjectionEngine(proj4: Proj4Factory): ProjectionEngine;
+
+/** CRS の識別子と変換定義 */
 export declare interface CrsObject {
-    epsg: number;
+    epsg?: number;
     proj4?: string;
     authority?: string;
     code?: string | number;
@@ -336,10 +339,18 @@ export declare function normalizeEdges(edges: EdgeSet[] | EdgeSetLegacy[], versi
  */
 export declare type PointSet = [Position, Position];
 
+/** proj4js と互換性のある投影コンバーターの生成関数 */
+export declare type Proj4Factory = (from: string, to: string) => {
+    forward(coordinate: number[], enforceAxis?: boolean): number[];
+    inverse(coordinate: number[], enforceAxis?: boolean): number[];
+};
+
 /** CRS と経緯度の変換を行う拡張可能な投影エンジン */
 export declare interface ProjectionEngine {
     toLonLat(coord: number[], crs: CrsObject): number[] | false;
     fromLonLat(lonLat: number[], crs: CrsObject): number[] | false;
+    /** 定義を読み込み、内蔵 CRS との照合が必要なときは CRS 座標の標本点を検査する */
+    validateDefinition?(crs: CrsObject, samplePoints?: number[][]): void;
 }
 
 declare type PropertiesTri = {
@@ -423,6 +434,7 @@ export declare interface TinSurfaceData {
     kind: "tin";
     compiled: CompiledTransformData;
     crs?: CrsObject;
+    projectionEngine?: ProjectionEngine;
     priority?: number;
     importance?: number;
     bounds?: number[][];
@@ -503,6 +515,8 @@ export declare class Transform {
      * 4. インデックスの作成
      */
     setCompiled(compiled: CompiledTransformData | CompiledLegacy): void;
+    /** 層固有の検査を、失敗時に compiled の適用を取り消せる位置で行う */
+    protected validateCompiledProjection(): void;
     private applyModernState;
     private applyLegacyState;
     /**

@@ -80,11 +80,11 @@ describe("WorldFileSurface", () => {
     } as unknown as ConstructorParameters<typeof WorldFileSurface>[0])).toThrow(/3つ以上/);
   });
 
-  it.each([6677, 4612, 0])("一期未対応の CRS %s を拒否する", epsg => {
+  it.each([6677, 4612, 0])("実行に必要な定義がない CRS %s を拒否する", epsg => {
     expect(() => new WorldFileSurface({ crs: { epsg }, worldFile, wh: [10, 10] })).toThrow(/CRS/);
   });
 
-  it("3857・4326 の proj4 は許可リストに一致するものだけ受け付ける", () => {
+  it("proj4js なしで 3857・4326 の既知の定義を受け付ける", () => {
     expect(() => new WorldFileSurface({
       crs: { epsg: 4326, proj4: "+proj=longlat +datum=WGS84 +no_defs +type=crs" },
       worldFile,
@@ -289,9 +289,8 @@ describe("MapTransform layered data", () => {
     expect(selected[0]).toBe(1);
   });
 
-  it("TIN の層で 3857 以外の CRS を拒否し、priority は初回選択後に設定する", () => {
+  it("従来 API の TIN の priority は初回選択後に設定する", () => {
     const map = new MapTransform();
-    expect(() => map.setLayeredMapData({ main: { kind: "tin", compiled: compiledFixture, crs: { epsg: 4326 } } })).toThrow(/三角網の層の3857以外/);
     map.setMapData({ compiled: compiledFixture, sub_maps: [{ compiled: compiledFixture, priority: 7, importance: 5, bounds: [[0, 0], [10, 0], [10, 10]] }] });
     expect(map.getLayerTransform(1)?.priority).toBeUndefined();
     map.xy2MercWithLayer([0, 0]);

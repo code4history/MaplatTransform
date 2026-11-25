@@ -3,8 +3,14 @@ import { booleanPointInPolygon, point, polygon } from "@turf/turf";
 import { Transform } from "./transform.ts";
 import { zoom2Radius, mercViewpoint2Mercs, mercs2MercViewpoint } from "./viewpoint.ts";
 import { xy2SysCoord, sysCoord2Xy } from "./coord-utils.ts";
-import { WorldFileSurface, validateCrs } from "./world-file-surface.ts";
-import type { LayerSurfaceData, LayeredMapData, MapData, SurfaceLike, Viewpoint } from "./types.ts";
+import { WorldFileSurface } from "./world-file-surface.ts";
+import {
+  builtinProjectionEngine, crsToMercator, layerCheckPoints, mercatorToCrs, validateLayerCrs
+} from "./projection.ts";
+import type {
+  CrsObject, LayerSurfaceData, LayeredMapData, MapData, ProjectionEngine, SurfaceLike,
+  TinSurfaceData, Viewpoint
+} from "./types.ts";
 
 /** Internal representation of a loaded sub-map TIN entry */
 interface SubTinEntry {
@@ -13,6 +19,60 @@ interface SubTinEntry {
   importance: number;
   xyBounds: Feature<Polygon>;
   mercBounds: Feature<Polygon>;
+}
+
+function validateTinCrs(
+  tin: Transform,
+  crs: CrsObject,
+  engine: ProjectionEngine,
+  bounds: number[][] | undefined,
+  toCrs: (coord: number[]) => number[] | false
+): void {
+  validateLayerCrs(crs, engine, () => {
+    const extent = bounds ?? tin.bounds ?? (!tin.wh ? tin.points.map(([xy]) => xy) : undefined);
+    const stateFull = tin.stateFull;
+    tin.stateFull = false;
+    try {
+      return layerCheckPoints(tin.wh, tin.xy, extent).map(xy => {
+        const coord = toCrs(xy);
+        if (coord === false) throw new Error("epsg と proj4 の照合点を三角網で変換できません");
+        return coord;
+      });
+    } finally {
+      tin.stateFull = stateFull;
+    }
+  });
+}
+
+/** 三角網の出力と Web メルカトルの間に投影を挟む */
+class ProjectedTinSurface extends Transform {
+  private readonly layerBounds?: number[][];
+
+  constructor(
+    data: TinSurfaceData,
+    private readonly crs: CrsObject,
+    private readonly projectionEngine: ProjectionEngine
+  ) {
+    super();
+    this.layerBounds = data.bounds;
+    this.setCompiled(data.compiled);
+  }
+
+  protected override validateCompiledProjection(): void {
+    validateTinCrs(this, this.crs, this.projectionEngine, this.layerBounds, xy =>
+      super.transform(xy, false, true)
+    );
+    this.stateTriangle = undefined;
+  }
+
+  override transform(coord: number[], backward?: boolean, ignoreBounds?: boolean): number[] | false {
+    if (backward) {
+      const inCrs = mercatorToCrs(coord, this.crs, this.projectionEngine);
+      return inCrs === false ? false : super.transform(inCrs, backward, ignoreBounds);
+    }
+    const inCrs = super.transform(coord, backward, ignoreBounds);
+    return inCrs === false ? false : crsToMercator(inCrs, this.crs, this.projectionEngine);
+  }
 }
 
 /** Tile size constant (same as MaplatCore) */
@@ -77,19 +137,20 @@ export class MapTransform {
 
   /** TIN と world file の変換面を混在させて読み込む */
   setLayeredMapData(mapData: LayeredMapData): void {
-    this.mainTin = this._createSurface(mapData.main);
-    if (mapData.main.priority !== undefined) this.mainTin.priority = mapData.main.priority;
-    if (mapData.main.importance !== undefined) this.mainTin.importance = mapData.main.importance;
-    const mainWh = mapData.main.kind === "tin" ? mapData.main.compiled.wh : this.mainTin.wh;
+    const mainTin = this._createSurface(mapData.main);
+    if (mapData.main.priority !== undefined) mainTin.priority = mapData.main.priority;
+    if (mapData.main.importance !== undefined) mainTin.importance = mapData.main.importance;
+    const mainWh = mapData.main.kind === "tin" ? mapData.main.compiled.wh : mainTin.wh;
+    let maxxy = this._maxxy;
     if (mapData.maxZoom !== undefined) {
-      this._maxxy = Math.pow(2, mapData.maxZoom) * TILE_SIZE;
+      maxxy = Math.pow(2, mapData.maxZoom) * TILE_SIZE;
     } else if (mainWh) {
       const maxDim = Math.max(mainWh[0], mainWh[1]);
       const maxZoom = Math.ceil(Math.log2(maxDim / TILE_SIZE));
-      this._maxxy = Math.pow(2, maxZoom) * TILE_SIZE;
+      maxxy = Math.pow(2, maxZoom) * TILE_SIZE;
     }
 
-    this.subTins = [];
+    const subTins: SubTinEntry[] = [];
     for (const subMapData of mapData.sub_maps ?? []) {
       const surface = this._createSurface(subMapData);
       const rawBounds = subMapData.bounds ?? (subMapData.kind === "tin" ? subMapData.compiled.bounds : undefined);
@@ -100,7 +161,7 @@ export class MapTransform {
         if (!merc) throw new Error("副層の bounds をメルカトル座標へ変換できません");
         return merc;
       });
-      this.subTins.push({
+      subTins.push({
         tin: surface,
         priority: subMapData.priority ?? 0,
         importance: subMapData.importance ?? 0,
@@ -108,17 +169,22 @@ export class MapTransform {
         mercBounds: polygon([mercBoundsCoords]) as Feature<Polygon>
       });
     }
+    this.mainTin = mainTin;
+    this.subTins = subTins;
+    this._maxxy = maxxy;
   }
 
   private _createSurface(data: LayerSurfaceData): SurfaceLike {
     if (data.kind === "worldFile") return new WorldFileSurface(data);
     if ("crs" in data && data.crs === null) throw new Error("三角網の層の CRS は null にできません");
-    if (data.crs) {
-      if (data.crs.epsg !== 3857) throw new Error("三角網の層の3857以外のCRSはまだ扱えません");
-      validateCrs(data.crs);
-    }
+    const crs = data.crs;
+    const engine = data.projectionEngine ?? builtinProjectionEngine;
+    if (crs !== undefined && crs.epsg !== 3857) return new ProjectedTinSurface(data, crs, engine);
     const transform = new Transform();
     transform.setCompiled(data.compiled);
+    if (crs !== undefined) {
+      validateTinCrs(transform, crs, engine, data.bounds, xy => transform.transform(xy, false, true));
+    }
     return transform;
   }
 

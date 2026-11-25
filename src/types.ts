@@ -99,9 +99,9 @@ export interface WorldFile {
   yOrigin: number;
 }
 
-/** 1期で使える CRS 識別子 */
+/** CRS の識別子と変換定義 */
 export interface CrsObject {
-  epsg: number;
+  epsg?: number;
   proj4?: string;
   authority?: string;
   code?: string | number;
@@ -112,6 +112,8 @@ export interface CrsObject {
 export interface ProjectionEngine {
   toLonLat(coord: number[], crs: CrsObject): number[] | false;
   fromLonLat(lonLat: number[], crs: CrsObject): number[] | false;
+  /** 定義を読み込み、内蔵 CRS との照合が必要なときは CRS 座標の標本点を検査する */
+  validateDefinition?(crs: CrsObject, samplePoints?: number[][]): void;
 }
 
 /** MapTransform が扱う変換面の共通口 */
@@ -128,6 +130,7 @@ export interface TinSurfaceData {
   kind: "tin";
   compiled: CompiledTransformData;
   crs?: CrsObject;
+  projectionEngine?: ProjectionEngine;
   priority?: number;
   importance?: number;
   bounds?: number[][];

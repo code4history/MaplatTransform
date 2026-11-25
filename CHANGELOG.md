@@ -5,6 +5,8 @@
 ## [Unreleased]
 
 ### Added
+- Added `createProj4ProjectionEngine(proj4)` for world-file and TIN layers, including TINs with world-file outer transforms. Proj4js is an optional peer dependency. `CrsObject.epsg` is optional; layers outside EPSG:3857 and EPSG:4326 require a proj4 definition.
+- world file・三角網の層（外周に world file を使う三角網を含む）に `createProj4ProjectionEngine(proj4)` を追加。proj4js は任意の peer 依存。`CrsObject.epsg` を任意にし、EPSG:3857・4326 以外の層の変換には proj4 定義を必須にした。
 - Added `WorldFileSurface`, `ProjectionEngine`, `SurfaceLike`, and layered map loading through `MapTransform.setLayeredMapData()` / `getSurfaceTransform()`. The built-in projection engine supports EPSG:3857 and EPSG:4326.
 - Added the public world-file helpers `worldFileToCrs()`, `crsToWorldFilePixel()`, and `validateWorldFile()`, using the half-pixel convention and rejecting singular or mirrored transforms.
 - Added compiled `outerTransform: "extrapolate" | "worldFile"` and `worldFile` keys. The default remains `"extrapolate"`; the world-file mode requires `worldFile` and allows omission of `vertices_params` and `centroid_point`.
