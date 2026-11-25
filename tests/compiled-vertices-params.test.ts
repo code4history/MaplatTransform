@@ -98,20 +98,20 @@ describe("compiled vertices_params shape check", () => {
 
     it("modern form: vertices_params itself is not an array", () => {
       const compiled = loadCompiled(MODERN);
-      const [forw, bakw] = compiled.vertices_params;
+      const [forw, bakw] = compiled.vertices_params!;
       (compiled as unknown as Record<string, unknown>).vertices_params = { 0: forw, 1: bakw };
       expect(() => new Transform().setCompiled(compiled)).toThrow(/vertices_params/);
     });
 
     it("modern form: a list longer than the vertex count", () => {
       const compiled = loadCompiled(MODERN);
-      compiled.vertices_params[0] = [...compiled.vertices_params[0], 0];
+      compiled.vertices_params![0] = [...compiled.vertices_params![0], 0];
       expect(() => new Transform().setCompiled(compiled)).toThrow(/vertices_params/);
     });
 
     it("modern form: a list shorter than the vertex count", () => {
       const compiled = loadCompiled(MODERN);
-      compiled.vertices_params[1] = compiled.vertices_params[1].slice(1);
+      compiled.vertices_params![1] = compiled.vertices_params![1].slice(1);
       expect(() => new Transform().setCompiled(compiled)).toThrow(/vertices_params/);
     });
 
@@ -121,7 +121,7 @@ describe("compiled vertices_params shape check", () => {
       ["an object", {}]
     ])("modern form: an element that is %s", (_label, value) => {
       const compiled = loadCompiled(MODERN);
-      (compiled.vertices_params[0] as unknown[])[1] = value;
+      (compiled.vertices_params![0] as unknown[])[1] = value;
       expect(() => new Transform().setCompiled(compiled)).toThrow(/vertices_params/);
     });
 

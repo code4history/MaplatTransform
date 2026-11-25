@@ -24,7 +24,7 @@ export interface IndexedTins {
  * @param tins 三角形群
  * @returns 点を含む三角形、または未定義（点が三角形群の外部にある場合）
  */
-function hit(point: Feature<Point>, tins: Tins): Tri | undefined {
+export function hit(point: Feature<Point>, tins: Tins): Tri | undefined {
   for (let i = 0; i < tins.features.length; i++) {
     const inside = booleanPointInPolygon(point, tins.features[i]);
     if (inside) {

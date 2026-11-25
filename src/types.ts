@@ -62,19 +62,87 @@ export interface Compiled {
   /** 書き出し側（MaplatTin 2.00704 以降）は常に `{}` を書く。以前の MaplatTransform はこのキーが無いと `transform()` で TypeError になるため、省略してはならない。読み込み側は値を無視する */
   weight_buffer: WeightBufferBD;
   strict_status?: StrictStatus;
-  centroid_point: Position[];
+  centroid_point?: Position[];
   edgeNodes?: PointSet[];
   kinks_points?: Position[];
   yaxisMode?: YaxisMode;
   vertexMode?: VertexMode;
   strictMode?: StrictMode;
-  vertices_params: number[][];
-  vertices_points: PointSet[];
+  vertices_params?: number[][];
+  vertices_points?: PointSet[];
   edges?: EdgeSet[];
   bounds?: number[][];
   boundsPolygon?: Feature<Polygon>;
   wh?: number[];
   xy?: number[];
+  /** 四辺形の外側に使う変換。省略時は従来の外挿を使う */
+  outerTransform?: "extrapolate" | "worldFile";
+  /** outerTransform が worldFile のときの係数 */
+  worldFile?: WorldFile;
+}
+
+/** 業界標準の world file 係数。原点は左上画素の中心 */
+export interface WorldFile {
+  xScale: number;
+  xSkew: number;
+  xOrigin: number;
+  ySkew: number;
+  yScale: number;
+  yOrigin: number;
+}
+
+/** 1期で使える CRS 識別子 */
+export interface CrsObject {
+  epsg: number;
+  proj4?: string;
+  authority?: string;
+  code?: string | number;
+  wkt?: string;
+}
+
+/** CRS と経緯度の変換を行う拡張可能な投影エンジン */
+export interface ProjectionEngine {
+  toLonLat(coord: number[], crs: CrsObject): number[] | false;
+  fromLonLat(lonLat: number[], crs: CrsObject): number[] | false;
+}
+
+/** MapTransform が扱う変換面の共通口 */
+export interface SurfaceLike {
+  transform(coord: number[], backward?: boolean, ignoreBounds?: boolean): number[] | false;
+  wh?: number[];
+  xy?: number[];
+  bounds?: number[][];
+  priority?: number;
+  importance?: number;
+}
+
+export interface TinSurfaceData {
+  kind: "tin";
+  compiled: Compiled;
+  crs?: CrsObject;
+  priority?: number;
+  importance?: number;
+  bounds?: number[][];
+}
+
+export type WorldFileSurfaceData = {
+  kind: "worldFile";
+  crs: CrsObject;
+  worldFile: WorldFile;
+  wh?: number[];
+  xy?: number[];
+  bounds?: number[][];
+  priority?: number;
+  importance?: number;
+  projectionEngine?: ProjectionEngine;
+};
+
+export type LayerSurfaceData = TinSurfaceData | WorldFileSurfaceData;
+
+export interface LayeredMapData {
+  main: LayerSurfaceData;
+  sub_maps?: LayerSurfaceData[];
+  maxZoom?: number;
 }
 
 /**

@@ -9,6 +9,9 @@ import { Position } from 'geojson';
  */
 export declare type BiDirectionKey = "forw" | "bakw";
 
+/** 3857 と 4326 の間を変換する内蔵投影エンジン */
+export declare const builtinProjectionEngine: ProjectionEngine;
+
 declare type Centroid = Feature<Point>;
 
 export declare type CentroidBD = {
@@ -25,19 +28,23 @@ export declare interface Compiled {
     /** 書き出し側（MaplatTin 2.00704 以降）は常に `{}` を書く。以前の MaplatTransform はこのキーが無いと `transform()` で TypeError になるため、省略してはならない。読み込み側は値を無視する */
     weight_buffer: WeightBufferBD;
     strict_status?: StrictStatus;
-    centroid_point: Position[];
+    centroid_point?: Position[];
     edgeNodes?: PointSet[];
     kinks_points?: Position[];
     yaxisMode?: YaxisMode;
     vertexMode?: VertexMode;
     strictMode?: StrictMode;
-    vertices_params: number[][];
-    vertices_points: PointSet[];
+    vertices_params?: number[][];
+    vertices_points?: PointSet[];
     edges?: EdgeSet[];
     bounds?: number[][];
     boundsPolygon?: Feature<Polygon>;
     wh?: number[];
     xy?: number[];
+    /** 四辺形の外側に使う変換。省略時は従来の外挿を使う */
+    outerTransform?: "extrapolate" | "worldFile";
+    /** outerTransform が worldFile のときの係数 */
+    worldFile?: WorldFile;
 }
 
 /**
@@ -57,6 +64,18 @@ export declare interface CompiledLegacy extends Compiled {
  * @returns 座標系が反転された三角形
  */
 export declare function counterTri(tri: Tri): Tri;
+
+/** 1期で使える CRS 識別子 */
+export declare interface CrsObject {
+    epsg: number;
+    proj4?: string;
+    authority?: string;
+    code?: string | number;
+    wkt?: string;
+}
+
+/** CRS 座標を world file の角原点画素座標へ逆変換する */
+export declare function crsToWorldFilePixel(worldFile: WorldFile, crs: number[]): number[];
 
 /**
  * エッジの終点を表す型
@@ -103,6 +122,14 @@ export declare type KinksBD = {
     [key in BiDirectionKey]?: Kinks;
 };
 
+export declare interface LayeredMapData {
+    main: LayerSurfaceData;
+    sub_maps?: LayerSurfaceData[];
+    maxZoom?: number;
+}
+
+export declare type LayerSurfaceData = TinSurfaceData | WorldFileSurfaceData;
+
 /**
  * Input data for MapTransform.setMapData().
  */
@@ -134,6 +161,9 @@ export declare class MapTransform {
      * @param mapData - メイン TIN と sub_maps の情報
      */
     setMapData(mapData: MapData): void;
+    /** TIN と world file の変換面を混在させて読み込む */
+    setLayeredMapData(mapData: LayeredMapData): void;
+    private _createSurface;
     /**
      * ピクセル座標 → メルカトル座標（最適レイヤー選択）
      *
@@ -232,6 +262,8 @@ export declare class MapTransform {
      * @returns 対応する Transform、または範囲外の場合は null
      */
     getLayerTransform(idx: number): Transform | null;
+    /** レイヤーインデックスに対応する変換面を返す */
+    getSurfaceTransform(idx: number): SurfaceLike | null;
     /** レイヤー数を返す（メイン + sub 数） */
     get layerCount(): number;
     /**
@@ -292,6 +324,12 @@ export declare function normalizeEdges(edges: EdgeSet[] | EdgeSetLegacy[], versi
  */
 export declare type PointSet = [Position, Position];
 
+/** CRS と経緯度の変換を行う拡張可能な投影エンジン */
+export declare interface ProjectionEngine {
+    toLonLat(coord: number[], crs: CrsObject): number[] | false;
+    fromLonLat(lonLat: number[], crs: CrsObject): number[] | false;
+}
+
 declare type PropertiesTri = {
     [key in PropertyTriKey]: PropertyTri;
 };
@@ -344,6 +382,16 @@ export declare interface SubMapData {
     bounds?: number[][];
 }
 
+/** MapTransform が扱う変換面の共通口 */
+export declare interface SurfaceLike {
+    transform(coord: number[], backward?: boolean, ignoreBounds?: boolean): number[] | false;
+    wh?: number[];
+    xy?: number[];
+    bounds?: number[][];
+    priority?: number;
+    importance?: number;
+}
+
 /**
  * システム座標（EPSG:3857相当）をピクセル座標に変換する
  *
@@ -358,6 +406,15 @@ export declare type Tins = FeatureCollection<Polygon, PropertiesTri>;
 export declare type TinsBD = {
     [key in BiDirectionKey]?: Tins;
 };
+
+export declare interface TinSurfaceData {
+    kind: "tin";
+    compiled: Compiled;
+    crs?: CrsObject;
+    priority?: number;
+    importance?: number;
+    bounds?: number[][];
+}
 
 /**
  * 座標変換の基本機能を提供するクラス
@@ -382,7 +439,7 @@ export declare class Transform {
     static YAXIS_FOLLOW: "follow";
     static YAXIS_INVERT: "invert";
     points: PointSet[];
-    /** @deprecated 2.00704 以降、Transform はこのプロパティを設定も参照もしない。サブクラス（MaplatTin）は、旧 @maplat/transform と組まれたときの互換のため {} を入れる（t2 設計 §2.1） */
+    /** @deprecated 2.00704 以降、Transform はこのプロパティを設定も参照もしない。サブクラス（MaplatTin）は、旧 @maplat/transform と組まれたときの互換のため {} を入れる */
     pointsWeightBuffer?: WeightBufferBD;
     strict_status?: StrictStatus;
     vertices_params?: VerticesParamsBD;
@@ -402,6 +459,8 @@ export declare class Transform {
     stateFull: boolean;
     stateTriangle?: Tri;
     stateBackward?: boolean;
+    outerTransform: "extrapolate" | "worldFile";
+    worldFile?: WorldFile;
     /**
      * Optional properties for MaplatCore extension
      * These properties allow consuming applications to extend Transform instances
@@ -437,6 +496,8 @@ export declare class Transform {
      * インデックスは変換処理を高速化するために使用されます。
      * グリッド形式のインデックスを作成し、各グリッドに
      * 含まれる三角形を記録します。
+     * セル数が MAX_INDEX_CELLS_PER_TRIANGLE で決まる上限を超えるデータは
+     * 索引を作らず、変換時に全三角形を線形に探します。
      */
     addIndexedTin(): void;
     /**
@@ -470,6 +531,9 @@ export declare class Transform {
 export declare function transformArr(point: Feature<Point>, tins: Tins, indexedTins?: IndexedTins, verticesParams?: VerticesParams, centroid?: Feature<Point>, _weightBuffer?: WeightBuffer, stateTriangle?: Tri, stateSetFunc?: (tri?: Tri) => void): Position;
 
 export declare type Tri = Feature<Polygon, PropertiesTri>;
+
+/** world file の係数が有限で、通常の地図の向きで可逆であることを確かめる */
+export declare function validateWorldFile(worldFile: WorldFile): void;
 
 /**
  * Vertex interpolation modes.
@@ -507,6 +571,65 @@ declare type WeightBuffer = {
 export declare type WeightBufferBD = {
     [key in BiDirectionKey]?: WeightBuffer;
 };
+
+/** 業界標準の world file 係数。原点は左上画素の中心 */
+export declare interface WorldFile {
+    xScale: number;
+    xSkew: number;
+    xOrigin: number;
+    ySkew: number;
+    yScale: number;
+    yOrigin: number;
+}
+
+/** world file と CRS の投影を束ねて 3857 との変換を行う */
+export declare class WorldFileSurface implements SurfaceLike {
+    readonly crs: CrsObject;
+    readonly worldFile: WorldFile;
+    readonly projectionEngine: ProjectionEngine;
+    wh: number[];
+    xy?: number[];
+    bounds?: number[][];
+    priority?: number;
+    importance?: number;
+    points: PointSet[];
+    edges: EdgeSet[];
+    constructor(options: WorldFileSurfaceOptions);
+    /** 画素座標を指定 CRS に変換する */
+    xyToCrs(xy: number[]): number[];
+    /** 指定 CRS 座標を画素座標に変換する */
+    crsToXy(crs: number[]): number[];
+    /** 地図画素と EPSG:3857 の間を変換する */
+    transform(coord: number[], backward?: boolean, _ignoreBounds?: boolean): number[] | false;
+}
+
+export declare type WorldFileSurfaceData = {
+    kind: "worldFile";
+    crs: CrsObject;
+    worldFile: WorldFile;
+    wh?: number[];
+    xy?: number[];
+    bounds?: number[][];
+    priority?: number;
+    importance?: number;
+    projectionEngine?: ProjectionEngine;
+};
+
+export declare interface WorldFileSurfaceOptions {
+    crs: CrsObject;
+    worldFile: WorldFile;
+    wh?: number[];
+    xy?: number[];
+    bounds?: number[][];
+    priority?: number;
+    importance?: number;
+    points?: PointSet[];
+    edges?: EdgeSet[];
+    projectionEngine?: ProjectionEngine;
+}
+
+/** 角原点の画素座標を、半画素規約を使って CRS 座標へ変換する */
+export declare function worldFileToCrs(worldFile: WorldFile, xy: number[]): number[];
 
 /**
  * ピクセル座標をシステム座標（EPSG:3857相当）に変換する

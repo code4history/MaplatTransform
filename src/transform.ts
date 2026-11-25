@@ -3,6 +3,7 @@ import { booleanPointInPolygon, point, getCoords } from "@turf/turf";
 import {
   MAX_INDEX_CELLS_PER_TRIANGLE,
   countIndexCells,
+  hit,
   transformArr,
   unitCalc
 } from "./geometry.ts";
@@ -31,6 +32,8 @@ import type {
   YaxisMode,
   CentroidBD
 } from "./types.ts";
+import type { WorldFile } from "./types.ts";
+import { crsToWorldFilePixel, validateWorldFile, worldFileToCrs } from "./world-file.ts";
 
 export const format_version = FORMAT_VERSION;
 
@@ -78,6 +81,8 @@ export class Transform {
   stateFull = false;
   stateTriangle?: Tri;
   stateBackward?: boolean;
+  outerTransform: "extrapolate" | "worldFile" = "extrapolate";
+  worldFile?: WorldFile;
 
   /**
    * Optional properties for MaplatCore extension
@@ -112,6 +117,22 @@ export class Transform {
    * 4. インデックスの作成
    */
   setCompiled(compiled: Compiled | CompiledLegacy): void {
+    if (compiled.outerTransform !== undefined &&
+      compiled.outerTransform !== "extrapolate" && compiled.outerTransform !== "worldFile") {
+      throw new Error("Invalid compiled data: outerTransform must be extrapolate or worldFile");
+    }
+    this.outerTransform = compiled.outerTransform ?? "extrapolate";
+    this.worldFile = compiled.worldFile;
+    if (this.outerTransform === "worldFile") {
+      if (!this.worldFile) throw new Error('compiled.outerTransform が "worldFile" ですが worldFile がありません');
+      validateWorldFile(this.worldFile);
+      if (!compiled.centroid_point) {
+        compiled = {
+          ...compiled,
+          centroid_point: compiled.centroid_point ?? [[0, 0], [0, 0]]
+        } as Compiled;
+      }
+    }
     if (isModernCompiled(compiled)) {
       this.applyModernState(restoreModernState(compiled));
       return;
@@ -298,8 +319,7 @@ export class Transform {
   transform(apoint: number[], backward?: boolean, ignoreBounds?: boolean): number[] | false {
     if (!this.tins)
       throw new Error("setCompiled() must be called before transform()");
-    if (backward && this.strict_status == Transform.STATUS_ERROR)
-      throw new Error('Backward transform is not allowed if strict_status == "strict_error"');
+    const originalPoint = apoint;
     if (this.yaxisMode == Transform.YAXIS_FOLLOW && backward) {
       apoint = [apoint[0], -1 * apoint[1]];
     }
@@ -308,6 +328,13 @@ export class Transform {
       if (!booleanPointInPolygon(tpoint, this.boundsPolygon!)) return false;
     }
     const tins = backward ? this.tins!.bakw : this.tins!.forw;
+    if (this.outerTransform === "worldFile" && tins && !hit(tpoint, tins)) {
+      return backward
+        ? crsToWorldFilePixel(this.worldFile!, originalPoint)
+        : worldFileToCrs(this.worldFile!, originalPoint);
+    }
+    if (backward && this.strict_status == Transform.STATUS_ERROR)
+      throw new Error('Backward transform is not allowed if strict_status == "strict_error"');
     const indexedTins = backward
       ? this.indexedTins?.bakw
       : this.indexedTins?.forw;

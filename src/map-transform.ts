@@ -3,11 +3,12 @@ import { booleanPointInPolygon, point, polygon } from "@turf/turf";
 import { Transform } from "./transform.ts";
 import { zoom2Radius, mercViewpoint2Mercs, mercs2MercViewpoint } from "./viewpoint.ts";
 import { xy2SysCoord, sysCoord2Xy } from "./coord-utils.ts";
-import type { MapData, Viewpoint } from "./types.ts";
+import { WorldFileSurface } from "./world-file-surface.ts";
+import type { LayerSurfaceData, LayeredMapData, MapData, SurfaceLike, Viewpoint } from "./types.ts";
 
 /** Internal representation of a loaded sub-map TIN entry */
 interface SubTinEntry {
-  tin: Transform;
+  tin: SurfaceLike;
   priority: number;
   importance: number;
   xyBounds: Feature<Polygon>;
@@ -27,7 +28,7 @@ const TILE_SIZE = 256;
  * OpenLayers への依存ゼロ。ブラウザ・Node.js 両対応。
  */
 export class MapTransform {
-  private mainTin: Transform | null = null;
+  private mainTin: SurfaceLike | null = null;
   private subTins: SubTinEntry[] = [];
   private _maxxy = 0;
 
@@ -39,53 +40,53 @@ export class MapTransform {
    * @param mapData - メイン TIN と sub_maps の情報
    */
   setMapData(mapData: MapData): void {
-    // メイン TIN を構築
-    const mainTin = new Transform();
-    mainTin.setCompiled(mapData.compiled);
-    this.mainTin = mainTin;
+    this.setLayeredMapData({
+      main: { kind: "tin", compiled: mapData.compiled },
+      maxZoom: mapData.maxZoom,
+      sub_maps: mapData.sub_maps?.map(sub => ({ kind: "tin", ...sub }))
+    });
+  }
 
-    // _maxxy を計算
-    // 優先順位: MapData.maxZoom > compiled.wh からの自動計算
+  /** TIN と world file の変換面を混在させて読み込む */
+  setLayeredMapData(mapData: LayeredMapData): void {
+    this.mainTin = this._createSurface(mapData.main);
+    const mainWh = this.mainTin.wh;
     if (mapData.maxZoom !== undefined) {
       this._maxxy = Math.pow(2, mapData.maxZoom) * TILE_SIZE;
-    } else if (mapData.compiled.wh) {
-      const maxDim = Math.max(mapData.compiled.wh[0], mapData.compiled.wh[1]);
+    } else if (mainWh) {
+      const maxDim = Math.max(mainWh[0], mainWh[1]);
       const maxZoom = Math.ceil(Math.log2(maxDim / TILE_SIZE));
       this._maxxy = Math.pow(2, maxZoom) * TILE_SIZE;
     }
 
-    // sub_maps を構築
     this.subTins = [];
-    if (mapData.sub_maps) {
-      for (const subMapData of mapData.sub_maps) {
-        const tin = new Transform();
-        tin.setCompiled(subMapData.compiled);
-
-        // bounds: SubMapData.bounds を優先し、なければ compiled.bounds を使用
-        const rawBounds: number[][] | undefined =
-          subMapData.bounds ?? subMapData.compiled.bounds;
-        if (!rawBounds) {
-          throw new Error(
-            "SubMapData must have bounds or compiled.bounds to create xyBounds polygon"
-          );
-        }
-
-        const xyBoundsCoords = [...rawBounds, rawBounds[0]];
-        const mercBoundsCoords = xyBoundsCoords.map(xy => {
-          const merc = tin.transform(xy, false);
-          if (!merc) throw new Error("Failed to transform sub-map bounds to mercator");
-          return merc;
-        });
-
-        this.subTins.push({
-          tin,
-          priority: subMapData.priority,
-          importance: subMapData.importance,
-          xyBounds: polygon([xyBoundsCoords]) as Feature<Polygon>,
-          mercBounds: polygon([mercBoundsCoords]) as Feature<Polygon>
-        });
-      }
+    for (const subMapData of mapData.sub_maps ?? []) {
+      const surface = this._createSurface(subMapData);
+      const rawBounds = subMapData.bounds ?? (subMapData.kind === "tin" ? subMapData.compiled.bounds : undefined);
+      if (!rawBounds) throw new Error("副層には bounds または compiled.bounds が必要です");
+      const xyBoundsCoords = [...rawBounds, rawBounds[0]];
+      const mercBoundsCoords = xyBoundsCoords.map(xy => {
+        const merc = surface.transform(xy, false);
+        if (!merc) throw new Error("副層の bounds をメルカトル座標へ変換できません");
+        return merc;
+      });
+      this.subTins.push({
+        tin: surface,
+        priority: subMapData.priority ?? 0,
+        importance: subMapData.importance ?? 0,
+        xyBounds: polygon([xyBoundsCoords]) as Feature<Polygon>,
+        mercBounds: polygon([mercBoundsCoords]) as Feature<Polygon>
+      });
     }
+  }
+
+  private _createSurface(data: LayerSurfaceData): SurfaceLike {
+    if (data.kind === "worldFile") return new WorldFileSurface(data);
+    const transform = new Transform();
+    transform.setCompiled(data.compiled);
+    transform.priority = data.priority;
+    transform.importance = data.importance;
+    return transform;
   }
 
   // ─── 処理2: submap TIN 選択付き変換 ───────────────────────────────────────
@@ -157,15 +158,15 @@ export class MapTransform {
 
     // 全 TIN で逆変換を実行し、各結果が xyBounds 内かを確認
     const allTins = this._getAllTinsWithIndex();
-    const rawResults: ([Transform, number, number[]] | [Transform, number])[] =
+    const rawResults: ([SurfaceLike, number, number[]] | [SurfaceLike, number])[] =
       allTins.map(({ index, tin, isMain }) => {
         const xy = this._transformByIndex(merc, index, true);
-        if (xy === false) return [tin, index] as [Transform, number];
+        if (xy === false) return [tin, index] as [SurfaceLike, number];
         // メイン TIN（index 0）は常に有効、sub TIN はポリゴン内チェック
         if (isMain || booleanPointInPolygon(point(xy), this.subTins[index - 1].xyBounds)) {
-          return [tin, index, xy] as [Transform, number, number[]];
+          return [tin, index, xy] as [SurfaceLike, number, number[]];
         }
-        return [tin, index] as [Transform, number];
+        return [tin, index] as [SurfaceLike, number];
       });
 
     // priority 降順でソート
@@ -178,7 +179,7 @@ export class MapTransform {
     // importance と優先度で最大2レイヤーを選択
     const result = sorted.reduce(
       (
-        ret: (undefined | [number, number[], Transform])[],
+        ret: (undefined | [number, number[], SurfaceLike])[],
         current,
         priIndex,
         arry
@@ -206,28 +207,28 @@ export class MapTransform {
               if (!hide) {
                 // visible な stored TIN が既に存在 → current を 2番目要素として追加
                 const visible = ret.filter(
-                  (r): r is [number, number[], Transform] => r !== undefined
+                  (r): r is [number, number[], SurfaceLike] => r !== undefined
                 );
-                const newRet = [...visible, [index, xy, tin] as [number, number[], Transform]];
+                const newRet = [...visible, [index, xy, tin] as [number, number[], SurfaceLike]];
                 return newRet
                   .sort((a, b) =>
                     (a[2].importance ?? 0) < (b[2].importance ?? 0) ? 1 : -1
                   )
-                  .slice(0, 2) as (undefined | [number, number[], Transform])[]; // 上限を増やす場合はここも変更
+                  .slice(0, 2) as (undefined | [number, number[], SurfaceLike])[]; // 上限を増やす場合はここも変更
               } else if (tinImportance < storedImportance) {
                 return ret;
               } else {
-                return [undefined, [index, xy, tin]] as (undefined | [number, number[], Transform])[];
+                return [undefined, [index, xy, tin]] as (undefined | [number, number[], SurfaceLike])[];
               }
             } else {
               // ret が空なのに xyBounds 内 → 高優先 TIN が変換失敗しているだけ → visible として追加
-              return [[index, xy, tin]] as (undefined | [number, number[], Transform])[];
+              return [[index, xy, tin]] as (undefined | [number, number[], SurfaceLike])[];
             }
           }
         }
 
         if (!ret.length || !ret[0]) {
-          return [[index, xy, tin]] as (undefined | [number, number[], Transform])[];
+          return [[index, xy, tin]] as (undefined | [number, number[], SurfaceLike])[];
         } else {
           ret.push([index, xy, tin]);
           return ret
@@ -459,9 +460,15 @@ export class MapTransform {
    * @returns 対応する Transform、または範囲外の場合は null
    */
   getLayerTransform(idx: number): Transform | null {
-    if (idx === 0) return this.mainTin;
+    if (idx === 0) return this.mainTin instanceof Transform ? this.mainTin : null;
     const sub = this.subTins[idx - 1];
-    return sub ? sub.tin : null;
+    return sub?.tin instanceof Transform ? sub.tin : null;
+  }
+
+  /** レイヤーインデックスに対応する変換面を返す */
+  getSurfaceTransform(idx: number): SurfaceLike | null {
+    if (idx === 0) return this.mainTin;
+    return this.subTins[idx - 1]?.tin ?? null;
   }
 
   /** レイヤー数を返す（メイン + sub 数） */
@@ -479,7 +486,7 @@ export class MapTransform {
   }
 
   /** priority 降順でソートした [index, tin, isMain] の配列を返す */
-  private _getTinsSortedByPriority(): { index: number; tin: Transform; isMain: boolean }[] {
+  private _getTinsSortedByPriority(): { index: number; tin: SurfaceLike; isMain: boolean }[] {
     const all = this._getAllTinsWithIndex();
     return all.sort((a, b) => {
       const priA = a.tin.priority ?? 0;
@@ -489,8 +496,8 @@ export class MapTransform {
   }
 
   /** メイン TIN + 全 sub TIN を index 付きで返す */
-  private _getAllTinsWithIndex(): { index: number; tin: Transform; isMain: boolean }[] {
-    const result: { index: number; tin: Transform; isMain: boolean }[] = [
+  private _getAllTinsWithIndex(): { index: number; tin: SurfaceLike; isMain: boolean }[] {
+    const result: { index: number; tin: SurfaceLike; isMain: boolean }[] = [
       { index: 0, tin: this.mainTin!, isMain: true }
     ];
     this.subTins.forEach((entry, i) => {

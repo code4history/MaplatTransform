@@ -86,6 +86,9 @@ function deriveStrictStatus(compiled: Compiled): StrictStatus {
 }
 
 function buildVerticesParams(compiled: Compiled): VerticesParamsBD {
+  if (compiled.outerTransform === "worldFile" && !compiled.vertices_params) {
+    return { forw: [[], []], bakw: [[], []] };
+  }
   // 頂点の三角形を作る数は vertices_points の長さで決まるので、作る前に配列であることを確かめる
   if (
     !Array.isArray(compiled.vertices_params) ||
@@ -142,15 +145,15 @@ function assertVerticesParams(params: VerticesParamsBD): void {
 }
 
 function buildVertexTins(compiled: Compiled, bakw: boolean) {
-  const N = compiled.vertices_points.length;
+  const N = compiled.vertices_points!.length;
   return Array.from({ length: N }, (_, idx) => {
     const idxNxt = (idx + 1) % N;
     const tri = indexesToTri(
       ["c", `b${idx}`, `b${idxNxt}`],
       compiled.points,
       compiled.edgeNodes || [],
-      compiled.centroid_point,
-      compiled.vertices_points,
+      compiled.centroid_point!,
+      compiled.vertices_points!,
       bakw,
       FORMAT_VERSION
     );
@@ -160,15 +163,15 @@ function buildVertexTins(compiled: Compiled, bakw: boolean) {
 
 function buildCentroid(compiled: Compiled) {
   return {
-    forw: point(compiled.centroid_point[0], {
+    forw: point(compiled.centroid_point![0], {
       target: {
-        geom: compiled.centroid_point[1],
+        geom: compiled.centroid_point![1],
         index: "c"
       }
     }),
-    bakw: point(compiled.centroid_point[1], {
+    bakw: point(compiled.centroid_point![1], {
       target: {
-        geom: compiled.centroid_point[0],
+        geom: compiled.centroid_point![0],
         index: "c"
       }
     })
@@ -184,8 +187,8 @@ function buildTins(compiled: Compiled) {
           idxes,
           compiled.points,
           compiled.edgeNodes || [],
-          compiled.centroid_point,
-          compiled.vertices_points,
+          compiled.centroid_point!,
+          compiled.vertices_points!,
           false,
           compiled.version
         )
@@ -197,8 +200,8 @@ function buildTins(compiled: Compiled) {
           idxes,
           compiled.points,
           compiled.edgeNodes || [],
-          compiled.centroid_point,
-          compiled.vertices_points,
+          compiled.centroid_point!,
+          compiled.vertices_points!,
           true,
           compiled.version
         )
