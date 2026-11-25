@@ -158,6 +158,8 @@ export class Transform {
   outerTransform: "extrapolate" | "worldFile" = "extrapolate";
   worldFile?: WorldFile;
   private outerVertices?: PointSet[];
+  /** B の外周の輪（地図面・地理面）。変換のたびに作らないよう setCompiled で一度だけ作る */
+  private outerRings?: { forw: number[][]; bakw: number[][] };
 
   /**
    * Optional properties for MaplatCore extension
@@ -221,7 +223,7 @@ export class Transform {
       ? restoreModernState(normalized)
       : restoreLegacyState(normalized as CompiledLegacy);
     // 実インスタンスに従来の順で適用し、索引の構築などが失敗したら適用前に戻す。
-    const keys = ["points", "strict_status", "vertices_params", "centroid", "edges", "edgeNodes", "tins", "kinks", "yaxisMode", "vertexMode", "strictMode", "bounds", "boundsPolygon", "wh", "xy", "indexedTins", "outerTransform", "worldFile", "outerVertices"] as const;
+    const keys = ["points", "strict_status", "vertices_params", "centroid", "edges", "edgeNodes", "tins", "kinks", "yaxisMode", "vertexMode", "strictMode", "bounds", "boundsPolygon", "wh", "xy", "indexedTins", "outerTransform", "worldFile", "outerVertices", "outerRings"] as const;
     const previous = Object.fromEntries(keys.map(key => [key, this[key]]));
     try {
       if ("compiled" in state) this.applyLegacyState(state);
@@ -229,6 +231,9 @@ export class Transform {
       this.outerTransform = outerTransform ?? "extrapolate";
       this.worldFile = nextWorldFile;
       this.outerVertices = outerTransform === "worldFile" ? compiled.vertices_points : undefined;
+      this.outerRings = this.outerVertices
+        ? { forw: this.outerVertices.map(pair => pair[0] as number[]), bakw: this.outerVertices.map(pair => pair[1] as number[]) }
+        : undefined;
     } catch (error) {
       Object.assign(this, previous);
       throw error;
@@ -430,7 +435,7 @@ export class Transform {
       : this.indexedTins?.forw;
     let triangle: Tri | undefined;
     if (this.outerTransform === "worldFile") {
-      const boundaryVertices = this.outerVertices?.map(pair => backward ? pair[1] : pair[0]);
+      const boundaryVertices = backward ? this.outerRings?.bakw : this.outerRings?.forw;
       const location = boundaryVertices ? classifyRingPoint(tpoint.geometry.coordinates, boundaryVertices) : "outside";
       if (backward && this.strict_status == Transform.STATUS_ERROR && location !== "outside") {
         throw new Error('Backward transform is not allowed if strict_status == "strict_error"');

@@ -474,6 +474,8 @@ export declare class Transform {
     outerTransform: "extrapolate" | "worldFile";
     worldFile?: WorldFile;
     private outerVertices?;
+    /** B の外周の輪（地図面・地理面）。変換のたびに作らないよう setCompiled で一度だけ作る */
+    private outerRings?;
     /**
      * Optional properties for MaplatCore extension
      * These properties allow consuming applications to extend Transform instances
