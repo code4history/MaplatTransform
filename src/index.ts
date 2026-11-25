@@ -12,7 +12,10 @@ export type {
   VerticesParamsBD,
   IndexedTinsBD,
   Compiled,
-  CompiledLegacy
+  CompiledLegacy,
+  CompiledWorldFileOuter,
+  CompiledExtrapolate,
+  CompiledTransformData
 } from "./types.ts";
 export type { Tins, Tri, PropertyTriKey } from "./geometry.ts";
 export { transformArr } from "./geometry.ts";
@@ -20,6 +23,9 @@ export { rotateVerticesTriangle, counterTri } from "./triangulation.ts";
 export type { Edge, EdgeSet, EdgeSetLegacy } from "./edgeutils.ts";
 export { normalizeEdges } from "./edgeutils.ts";
 export { Transform, format_version } from "./transform.ts";
+export { WorldFileSurface, builtinProjectionEngine } from "./world-file-surface.ts";
+export type { WorldFileSurfaceOptions } from "./world-file-surface.ts";
+export { worldFileToCrs, crsToWorldFilePixel, validateWorldFile } from "./world-file.ts";
 
 // New exports: constants, pure functions, MapTransform
 export { MERC_MAX, MERC_CROSSMATRIX } from "./constants.ts";
@@ -34,5 +40,13 @@ export { MapTransform } from "./map-transform.ts";
 export type {
   Viewpoint,
   SubMapData,
-  MapData
+  MapData,
+  WorldFile,
+  CrsObject,
+  ProjectionEngine,
+  SurfaceLike,
+  TinSurfaceData,
+  WorldFileSurfaceData,
+  LayerSurfaceData,
+  LayeredMapData
 } from "./types.ts";

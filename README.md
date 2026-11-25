@@ -24,6 +24,7 @@ MaplatTransform is open-source under the Apache License 2.0 (from version 0.5.3)
 ## Key Features
 
 - Coordinate transformation between two plane coordinate systems using Maplat-generated TIN definitions (forward and backward, topology-preserving)
+- World-file affine surfaces in EPSG:3857 or EPSG:4326, including mixed TIN and world-file layers
 - V2/V3 compiled format support (V3 adds N-boundary vertices for higher accuracy)
 - Multiple coordinate system support: standard orthogonal, Y-axis inverted, bird's-eye view distorted
 - Sub-map selection, viewport transformation, and cross-map viewport sync (Processings 2–4)
@@ -82,6 +83,36 @@ const restored = transform.transform(transformed, true);
 For sub-map selection, viewport transformation, and cross-map viewport
 synchronization, see the
 [Wiki Tutorials](https://github.com/code4history/MaplatTransform/wiki/Tutorials).
+
+### World-file surfaces
+
+`MapTransform.setLayeredMapData()` accepts a world-file surface as the main map or a sub-map. A world file uses the standard six named coefficients; `xOrigin` and `yOrigin` refer to the center of the upper-left pixel. Pixel coordinates use the image corner as the origin, so the conversion subtracts one half pixel before applying the affine coefficients.
+
+World-file output coordinates are always ordered east then north, regardless of the CRS authority axis order. The built-in projection engine is exported as `builtinProjectionEngine`. For a world-file layer, `getLayerTransform()` returns `null`; use `getSurfaceTransform()` to access its `SurfaceLike` transform.
+
+TIN layers may opt into `outerTransform: "worldFile"` inside their compiled payload. Type this payload as `CompiledWorldFileOuter`: `worldFile` and `vertices_points` are required, while `vertices_params` and `centroid_point` may be omitted. Existing `Compiled`, `MapData`, and `SubMapData` keep their original required fields.
+
+```typescript
+import { MapTransform } from '@maplat/transform';
+
+const map = new MapTransform();
+map.setLayeredMapData({
+  main: {
+    kind: 'worldFile',
+    crs: { epsg: 4326 },
+    worldFile: {
+      xScale: 0.01, xSkew: 0, xOrigin: 139,
+      ySkew: 0, yScale: -0.01, yOrigin: 36
+    },
+    wh: [1000, 1000]
+  }
+});
+const surface = map.getSurfaceTransform(0);
+```
+
+The named helpers `worldFileToCrs(worldFile, xy)` and `crsToWorldFilePixel(worldFile, crs)` implement the forward and inverse affine equations. `validateWorldFile(worldFile)` rejects non-finite, singular, and mirrored transforms. The built-in projection engine supports EPSG:3857 and EPSG:4326; other CRS definitions are rejected in this release.
+
+For compiled TIN data, `outerTransform` is an optional camelCase compiled key. It defaults to `"extrapolate"`, preserving existing behavior. `"worldFile"` applies its sibling `worldFile` coefficients outside the quadrilateral formed by the `vertices_points` ring; this mode requires `worldFile` and can omit `vertices_params` and `centroid_point`.
 
 ### API reference
 

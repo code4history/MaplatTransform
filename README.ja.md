@@ -23,6 +23,7 @@ MaplatTransform は Apache License 2.0（バージョン 0.5.3 以降）のオ�
 ## 主な特徴
 
 - Maplat 生成の TIN 定義を用いた2平面座標系間の座標変換（双方向・トポロジー維持）
+- EPSG:3857・4326 の world file アフィン面と、TIN・world file 層の混在
 - V2/V3 コンパイル済みフォーマット対応（V3 は N 境界頂点で高精度）
 - 標準直交座標系・Y軸反転座標系・鳥瞰図歪座標系など複数座標系サポート
 - サブマップ選択・ビューポート変換・地図間ビューポート同期（処理2〜4）
@@ -79,6 +80,36 @@ const restored = transform.transform(transformed, true);
 
 サブマップ選択・ビューポート変換・地図間ビューポート同期については
 [Wiki Tutorials](https://github.com/code4history/MaplatTransform/wiki/Tutorials) を参照してください。
+
+### World file 面
+
+`MapTransform.setLayeredMapData()` は、メイン地図または副地図として world file 面を受け取ります。world file は名前付き6係数を使い、`xOrigin`・`yOrigin` は左上画素の中心を指します。画素座標の原点は画像の角なので、アフィン変換の前に各座標から半画素を引きます。
+
+world file の出力座標は、CRS の公式な軸順によらず東・北の順です。内蔵投影エンジンは `builtinProjectionEngine` という名前で export しています。world file 層では `getLayerTransform()` は `null` を返すため、変換面には `getSurfaceTransform()` を使ってください。
+
+三角網の compiled に `outerTransform: "worldFile"` を持たせる場合は `CompiledWorldFileOuter` 型を使います。`worldFile` と `vertices_points` は必須で、`vertices_params` と `centroid_point` は省略可能です。既存の `Compiled`・`MapData`・`SubMapData` の必須フィールドは維持しています。
+
+```typescript
+import { MapTransform } from '@maplat/transform';
+
+const map = new MapTransform();
+map.setLayeredMapData({
+  main: {
+    kind: 'worldFile',
+    crs: { epsg: 4326 },
+    worldFile: {
+      xScale: 0.01, xSkew: 0, xOrigin: 139,
+      ySkew: 0, yScale: -0.01, yOrigin: 36
+    },
+    wh: [1000, 1000]
+  }
+});
+const surface = map.getSurfaceTransform(0);
+```
+
+公開関数 `worldFileToCrs(worldFile, xy)` と `crsToWorldFilePixel(worldFile, crs)` は、順方向・逆方向のアフィン式を実装します。`validateWorldFile(worldFile)` は有限でない係数、非正則行列、鏡像を拒否します。内蔵投影エンジンが扱う CRS は EPSG:3857 と EPSG:4326 です。それ以外の定義はこの版では読み込みエラーになります。
+
+TIN の compiled データでは、camelCase の任意キー `outerTransform` を使えます。省略時は既存と同じ `"extrapolate"` です。`"worldFile"` は `vertices_points` が作る四辺形の輪の外を同じ compiled 内の `worldFile` 係数で変換します。このモードでは `worldFile` が必須で、`vertices_params` と `centroid_point` は省略できます。
 
 ### API リファレンス
 

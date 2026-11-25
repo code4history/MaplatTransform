@@ -77,6 +77,84 @@ export interface Compiled {
   xy?: number[];
 }
 
+/** 外側を world file で補う三角網。既存の Compiled の公開型は変更しない */
+export interface CompiledWorldFileOuter extends Omit<Compiled, "centroid_point" | "vertices_params"> {
+  outerTransform: "worldFile";
+  worldFile: WorldFile;
+  vertices_points: PointSet[];
+  centroid_point?: Position[];
+  vertices_params?: number[][];
+}
+
+export type CompiledExtrapolate = Compiled & { outerTransform: "extrapolate"; worldFile?: never };
+export type CompiledTransformData = Compiled | CompiledWorldFileOuter | CompiledExtrapolate;
+
+/** 業界標準の world file 係数。原点は左上画素の中心 */
+export interface WorldFile {
+  xScale: number;
+  xSkew: number;
+  xOrigin: number;
+  ySkew: number;
+  yScale: number;
+  yOrigin: number;
+}
+
+/** 1期で使える CRS 識別子 */
+export interface CrsObject {
+  epsg: number;
+  proj4?: string;
+  authority?: string;
+  code?: string | number;
+  wkt?: string;
+}
+
+/** CRS と経緯度の変換を行う拡張可能な投影エンジン */
+export interface ProjectionEngine {
+  toLonLat(coord: number[], crs: CrsObject): number[] | false;
+  fromLonLat(lonLat: number[], crs: CrsObject): number[] | false;
+}
+
+/** MapTransform が扱う変換面の共通口 */
+export interface SurfaceLike {
+  transform(coord: number[], backward?: boolean, ignoreBounds?: boolean): number[] | false;
+  wh?: number[];
+  xy?: number[];
+  bounds?: number[][];
+  priority?: number;
+  importance?: number;
+}
+
+export interface TinSurfaceData {
+  kind: "tin";
+  compiled: CompiledTransformData;
+  crs?: CrsObject;
+  priority?: number;
+  importance?: number;
+  bounds?: number[][];
+}
+
+type WorldFileSurfaceDimensions = { wh: number[]; bounds?: number[][] } | { wh?: undefined; bounds: [number[], number[], number[], ...number[][]] };
+
+export type WorldFileSurfaceData = WorldFileSurfaceDimensions & {
+  kind: "worldFile";
+  crs: CrsObject;
+  worldFile: WorldFile;
+  wh?: number[];
+  xy?: number[];
+  bounds?: number[][];
+  priority?: number;
+  importance?: number;
+  projectionEngine?: ProjectionEngine;
+};
+
+export type LayerSurfaceData = TinSurfaceData | WorldFileSurfaceData;
+
+export interface LayeredMapData {
+  main: LayerSurfaceData;
+  sub_maps?: LayerSurfaceData[];
+  maxZoom?: number;
+}
+
 /**
  * Historical serialization format prior to 2.00703.
  */

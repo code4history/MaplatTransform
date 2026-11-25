@@ -3,6 +3,7 @@ import { booleanPointInPolygon, point, getCoords } from "@turf/turf";
 import {
   MAX_INDEX_CELLS_PER_TRIANGLE,
   countIndexCells,
+  hit,
   transformArr,
   unitCalc
 } from "./geometry.ts";
@@ -17,6 +18,8 @@ import type { EdgeSet } from "./edgeutils.ts";
 import type {
   Compiled,
   CompiledLegacy,
+  CompiledTransformData,
+  CompiledWorldFileOuter,
   IndexedTinsBD,
   KinksBD,
   LegacyStatePayload,
@@ -31,8 +34,82 @@ import type {
   YaxisMode,
   CentroidBD
 } from "./types.ts";
+import type { WorldFile } from "./types.ts";
+import { crsToWorldFilePixel, validateWorldFile, worldFileToCrs } from "./world-file.ts";
 
 export const format_version = FORMAT_VERSION;
+
+function crossProduct(a: number[], b: number[], p: number[]): number {
+  return (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+}
+
+function inSegmentBounds(p: number[], a: number[], b: number[], tolerance = 0): boolean {
+  return p[0] >= Math.min(a[0], b[0]) - tolerance &&
+    p[0] <= Math.max(a[0], b[0]) + tolerance &&
+    p[1] >= Math.min(a[1], b[1]) - tolerance &&
+    p[1] <= Math.max(a[1], b[1]) + tolerance;
+}
+
+function segmentsIntersect(a: number[], b: number[], c: number[], d: number[]): boolean {
+  const abc = crossProduct(a, b, c);
+  const abd = crossProduct(a, b, d);
+  const cda = crossProduct(c, d, a);
+  const cdb = crossProduct(c, d, b);
+  if (
+    (abc === 0 && inSegmentBounds(c, a, b)) ||
+    (abd === 0 && inSegmentBounds(d, a, b)) ||
+    (cda === 0 && inSegmentBounds(a, c, d)) ||
+    (cdb === 0 && inSegmentBounds(b, c, d))
+  ) return true;
+  return Math.sign(abc) * Math.sign(abd) === -1 && Math.sign(cda) * Math.sign(cdb) === -1;
+}
+
+function ringWinding(vertices: number[][]): number {
+  // 最初の頂点を基準にして、大きな絶対座標どうしの差し引きによる桁落ちを避ける。
+  const area = vertices.reduce((sum, vertex, i) =>
+    sum + crossProduct(vertices[0], vertex, vertices[(i + 1) % vertices.length]), 0);
+  if (!Number.isFinite(area) || area === 0) {
+    throw new Error('compiled.outerTransform が "worldFile" のとき vertices_points の輪は面積を持つ必要があります');
+  }
+  for (let i = 0; i < vertices.length; i++) {
+    const a = vertices[i];
+    const b = vertices[(i + 1) % vertices.length];
+    if (a[0] === b[0] && a[1] === b[1]) {
+      throw new Error('compiled.outerTransform が "worldFile" のとき vertices_points の輪に重複頂点は許可されません');
+    }
+    for (let j = i + 2; j < vertices.length; j++) {
+      if (i === 0 && j === vertices.length - 1) continue;
+      if (segmentsIntersect(a, b, vertices[j], vertices[(j + 1) % vertices.length])) {
+        throw new Error('compiled.outerTransform が "worldFile" のとき vertices_points の輪に辺の交差は許可されません');
+      }
+    }
+  }
+  return Math.sign(area);
+}
+
+function classifyRingPoint(coord: number[], vertices: number[][]): "inside" | "edge" | "outside" {
+  let inside = false;
+  for (let i = 0, j = vertices.length - 1; i < vertices.length; j = i++) {
+    const a = vertices[j];
+    const b = vertices[i];
+    const [ax, ay] = a;
+    const [bx, by] = b;
+    const dx = bx - ax;
+    const dy = by - ay;
+    const qx = coord[0] - ax;
+    const qy = coord[1] - ay;
+    // 外積の誤差は座標の丸め幅と辺長の積で見積もり、絶対座標の二乗には比例させない。
+    const coordinateTolerance = Number.EPSILON * 16 * Math.max(1, Math.abs(ax), Math.abs(ay), Math.abs(bx), Math.abs(by), Math.abs(coord[0]), Math.abs(coord[1]));
+    const edgeLength = Math.hypot(dx, dy);
+    const crossTolerance = coordinateTolerance * edgeLength + Number.EPSILON * 16 * (Math.abs(qx * dy) + Math.abs(qy * dx));
+    if (
+      Math.abs(crossProduct(a, b, coord)) <= crossTolerance &&
+      inSegmentBounds(coord, a, b, coordinateTolerance)
+    ) return "edge";
+    if ((ay > coord[1]) !== (by > coord[1]) && coord[0] < (bx - ax) * (coord[1] - ay) / (by - ay) + ax) inside = !inside;
+  }
+  return inside ? "inside" : "outside";
+}
 
 /**
  * 座標変換の基本機能を提供するクラス
@@ -78,6 +155,11 @@ export class Transform {
   stateFull = false;
   stateTriangle?: Tri;
   stateBackward?: boolean;
+  outerTransform: "extrapolate" | "worldFile" = "extrapolate";
+  worldFile?: WorldFile;
+  private outerVertices?: PointSet[];
+  /** B の外周の輪（地図面・地理面）。変換のたびに作らないよう setCompiled で一度だけ作る */
+  private outerRings?: { forw: number[][]; bakw: number[][] };
 
   /**
    * Optional properties for MaplatCore extension
@@ -111,12 +193,51 @@ export class Transform {
    * 3. TINネットワークの再構築
    * 4. インデックスの作成
    */
-  setCompiled(compiled: Compiled | CompiledLegacy): void {
-    if (isModernCompiled(compiled)) {
-      this.applyModernState(restoreModernState(compiled));
-      return;
+  setCompiled(compiled: CompiledTransformData | CompiledLegacy): void {
+    const worldFileCompiled = "outerTransform" in compiled;
+    const outerTransform = worldFileCompiled ? compiled.outerTransform : undefined;
+    if (outerTransform !== undefined && outerTransform !== "extrapolate" && outerTransform !== "worldFile") {
+      throw new Error("Invalid compiled data: outerTransform must be extrapolate or worldFile");
     }
-    this.applyLegacyState(restoreLegacyState(compiled as CompiledLegacy));
+    const nextWorldFile = worldFileCompiled ? compiled.worldFile : undefined;
+    if (outerTransform === "worldFile") {
+      if (!nextWorldFile) throw new Error('compiled.outerTransform が "worldFile" ですが worldFile がありません');
+      validateWorldFile(nextWorldFile);
+      const vertices = (compiled as CompiledWorldFileOuter).vertices_points;
+      // vertices_points は四辺形の上の補助頂点すべて（4 隅＋辺の上の点）を輪の順に並べたもの。4 点に決め打ちしない
+      if (!Array.isArray(vertices) || vertices.length < 4 || vertices.some(pair => !Array.isArray(pair) || pair.length < 2 || pair.some(coord => !Array.isArray(coord) || coord.length < 2 || !coord.slice(0, 2).every(Number.isFinite)))) {
+        throw new Error('compiled.outerTransform が "worldFile" のとき vertices_points は有限な 4 頂点以上の輪が必要です');
+      }
+      const mapWinding = ringWinding(vertices.map(pair => pair[0]));
+      const geoWinding = ringWinding(vertices.map(pair => pair[1]));
+      // follow の地理面は内部で y が反転済み。外部座標の規約では地図面と地理面の符号が逆になる。
+      const externalGeoWinding = compiled.yaxisMode === Transform.YAXIS_FOLLOW ? -geoWinding : geoWinding;
+      if (mapWinding === externalGeoWinding) {
+        throw new Error('compiled.outerTransform が "worldFile" のとき vertices_points の両面の巻き方向が整合していません');
+      }
+    }
+    const normalized = outerTransform === "worldFile"
+      ? { ...compiled, centroid_point: compiled.centroid_point ?? [[0, 0], [0, 0]] } as Compiled
+      : compiled as Compiled;
+    const state = isModernCompiled(normalized)
+      ? restoreModernState(normalized)
+      : restoreLegacyState(normalized as CompiledLegacy);
+    // 実インスタンスに従来の順で適用し、索引の構築などが失敗したら適用前に戻す。
+    const keys = ["points", "strict_status", "vertices_params", "centroid", "edges", "edgeNodes", "tins", "kinks", "yaxisMode", "vertexMode", "strictMode", "bounds", "boundsPolygon", "wh", "xy", "indexedTins", "outerTransform", "worldFile", "outerVertices", "outerRings"] as const;
+    const previous = Object.fromEntries(keys.map(key => [key, this[key]]));
+    try {
+      if ("compiled" in state) this.applyLegacyState(state);
+      else this.applyModernState(state);
+      this.outerTransform = outerTransform ?? "extrapolate";
+      this.worldFile = nextWorldFile;
+      this.outerVertices = outerTransform === "worldFile" ? compiled.vertices_points : undefined;
+      this.outerRings = this.outerVertices
+        ? { forw: this.outerVertices.map(pair => pair[0] as number[]), bakw: this.outerVertices.map(pair => pair[1] as number[]) }
+        : undefined;
+    } catch (error) {
+      Object.assign(this, previous);
+      throw error;
+    }
   }
 
   private applyModernState(state: ModernStatePayload): void {
@@ -298,8 +419,9 @@ export class Transform {
   transform(apoint: number[], backward?: boolean, ignoreBounds?: boolean): number[] | false {
     if (!this.tins)
       throw new Error("setCompiled() must be called before transform()");
-    if (backward && this.strict_status == Transform.STATUS_ERROR)
+    if (backward && this.strict_status == Transform.STATUS_ERROR && this.outerTransform !== "worldFile")
       throw new Error('Backward transform is not allowed if strict_status == "strict_error"');
+    const originalPoint = apoint;
     if (this.yaxisMode == Transform.YAXIS_FOLLOW && backward) {
       apoint = [apoint[0], -1 * apoint[1]];
     }
@@ -311,6 +433,24 @@ export class Transform {
     const indexedTins = backward
       ? this.indexedTins?.bakw
       : this.indexedTins?.forw;
+    let triangle: Tri | undefined;
+    if (this.outerTransform === "worldFile") {
+      const boundaryVertices = backward ? this.outerRings?.bakw : this.outerRings?.forw;
+      const location = boundaryVertices ? classifyRingPoint(tpoint.geometry.coordinates, boundaryVertices) : "outside";
+      if (backward && this.strict_status == Transform.STATUS_ERROR && location !== "outside") {
+        throw new Error('Backward transform is not allowed if strict_status == "strict_error"');
+      }
+      if (location === "inside" && tins) triangle = hit(tpoint, tins, indexedTins);
+      if (!triangle) {
+        // 外周では両方式が一致する。丸めなどで三角形が見つからなかった場合も world file に戻す。
+        const ret = backward
+          ? crsToWorldFilePixel(this.worldFile!, originalPoint)
+          : worldFileToCrs(this.worldFile!, originalPoint);
+        if (!ret.every(Number.isFinite)) return false;
+        if (backward && this.bounds && !ignoreBounds && !booleanPointInPolygon(point(ret), this.boundsPolygon!)) return false;
+        return ret;
+      }
+    }
     const verticesParams = backward
       ? this.vertices_params!.bakw
       : this.vertices_params!.forw;
@@ -336,7 +476,8 @@ export class Transform {
       centroid,
       undefined,
       stateTriangle,
-      stateSetFunc
+      stateSetFunc,
+      triangle
     );
     if (this.bounds && backward && !ignoreBounds) {
       const rpoint = point(ret);
