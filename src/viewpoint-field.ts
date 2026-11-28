@@ -7,6 +7,7 @@ import {
   N_LONG,
   N_MARGIN,
   N_SHORT_MIN,
+  N_SHORT_MAX,
   PROBE_RADIUS_CELLS,
   ROTATION_THRESHOLD_DEG,
   SCALE_RATIO_THRESHOLD,
@@ -155,8 +156,9 @@ function gridSpec(rect: PaperRect, nLong: number = N_LONG): GridSpec {
   }
   const longSide = Math.max(lx, ly);
   const shortSide = Math.min(lx, ly);
+  // 短辺分割数はアスペクト比比例（下限 N_SHORT_MIN・上限 N_SHORT_MAX、§2.2）
   const nShort = Math.min(
-    nLong,
+    N_SHORT_MAX,
     Math.max(N_SHORT_MIN, Math.round((nLong * shortSide) / longSide))
   );
   const nxInner = lx >= ly ? nLong : nShort;
@@ -178,13 +180,14 @@ function gridSpec(rect: PaperRect, nLong: number = N_LONG): GridSpec {
 /**
  * 4 点プローブの材料を集める。
  * d は「Y 上向き」の入力変位で、紙側は (Δx, −Δy)、地理側は (ΔX, ΔY)（§1.1）。
+ * 中心は 4 点がそろわないフォールバックでしか使わないため変換しない（§1.2 3.）。
  */
 function collectProbes(
   surface: SurfaceLike,
   p0: number[],
   r: number,
   backward: boolean
-): { valid: { d: [number, number]; out: number[] }[]; center: number[] | false } {
+): { d: [number, number]; out: number[] }[] {
   const yFlip = !backward;
   const offsets: [number, number][] = [[r, 0], [-r, 0], [0, r], [0, -r]];
   const valid: { d: [number, number]; out: number[] }[] = [];
@@ -193,7 +196,7 @@ function collectProbes(
     const out = surface.transform(input, backward, true);
     if (finite2(out)) valid.push({ d, out });
   }
-  return { valid, center: surface.transform(p0, backward, true) };
+  return valid;
 }
 
 /** 出力を Y 上向き系（紙側は p̃ = (x, −y)）へそろえる */
@@ -258,8 +261,7 @@ export function probeCoefficients(
   r: number,
   backward: boolean
 ): ViewpointCoefficients | null {
-  const { valid, center } = collectProbes(surface, p0, r, backward);
-  const centerUp = finite2(center) ? toYUp(center, backward) : null;
+  const valid = collectProbes(surface, p0, r, backward);
   const find = (u: number, v: number): [number, number] | undefined => {
     const hitProbe = valid.find(p => p.d[0] === u && p.d[1] === v);
     return hitProbe ? toYUp(hitProbe.out, backward) : undefined;
@@ -274,6 +276,9 @@ export function probeCoefficients(
     );
     return backward ? invertCoefficients(jac) : jac;
   }
+  // 4 点がそろわないときだけ中心を変換する（§1.2 3.）
+  const centerOut = surface.transform(p0, backward, true);
+  const centerUp = finite2(centerOut) ? toYUp(centerOut, backward) : null;
   if (!centerUp) return null;
   const isX = (d: [number, number]): boolean => d[1] === 0;
   const xProbes = valid.filter(p => isX(p.d));
@@ -299,7 +304,7 @@ export function probeCoefficients(
   return null;
 }
 
-/** 双線形補間（ln s・単位ベクトル＋端値クランプ、§1.3） */
+/** 双線形補間（ln s・単位ベクトル＋端値クランプ、§1.3）。配列・クロージャを作らず添字で引く */
 export function interpolateGrid(grid: CoefficientGrid, x: number, y: number): ViewpointCoefficients {
   const xi = Math.min(Math.max((x - grid.x0) / grid.dx, 0), grid.nx - 1);
   const eta = Math.min(Math.max((y - grid.y0) / grid.dy, 0), grid.ny - 1);
@@ -307,26 +312,35 @@ export function interpolateGrid(grid: CoefficientGrid, x: number, y: number): Vi
   const j0 = Math.min(Math.floor(eta), grid.ny - 2);
   const fx = xi - i0;
   const fy = eta - j0;
-  const w: [number, number, number, number] = [
-    (1 - fx) * (1 - fy),
-    fx * (1 - fy),
-    (1 - fx) * fy,
-    fx * fy
-  ];
-  const at = (arr: Float64Array, i: number, j: number): number => arr[j * grid.nx + i];
-  const corners: [number, number][] = [[i0, j0], [i0 + 1, j0], [i0, j0 + 1], [i0 + 1, j0 + 1]];
-  let l = 0, c = 0, d = 0;
-  for (let k = 0; k < 4; k++) {
-    const [i, j] = corners[k];
-    l += w[k] * at(grid.ls, i, j);
-    c += w[k] * at(grid.cs, i, j);
-    d += w[k] * at(grid.sn, i, j);
-  }
+  const w00 = (1 - fx) * (1 - fy);
+  const w10 = fx * (1 - fy);
+  const w01 = (1 - fx) * fy;
+  const w11 = fx * fy;
+  const nx = grid.nx;
+  const ls = grid.ls;
+  const cs = grid.cs;
+  const sn = grid.sn;
+  const i00 = j0 * nx + i0;
+  const i10 = i00 + 1;
+  const i01 = i00 + nx;
+  const i11 = i01 + 1;
+  let l = w00 * ls[i00];
+  l += w10 * ls[i10];
+  l += w01 * ls[i01];
+  l += w11 * ls[i11];
+  let c = w00 * cs[i00];
+  c += w10 * cs[i10];
+  c += w01 * cs[i01];
+  c += w11 * cs[i11];
+  let d = w00 * sn[i00];
+  d += w10 * sn[i10];
+  d += w01 * sn[i01];
+  d += w11 * sn[i11];
   const s = Math.exp(l);
   const theta =
     c * c + d * d > UNIT_VECTOR_DEGENERATE_EPS2
       ? Math.atan2(d, c)
-      : Math.atan2(at(grid.sn, i0, j0), at(grid.cs, i0, j0));
+      : Math.atan2(sn[i00], cs[i00]);
   return { s, theta };
 }
 
