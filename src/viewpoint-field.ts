@@ -6,7 +6,6 @@ import {
   JUDGE_STATISTIC,
   N_LONG,
   N_MARGIN,
-  N_SHORT_MAX,
   N_SHORT_MIN,
   PROBE_RADIUS_CELLS,
   ROTATION_THRESHOLD_DEG,
@@ -61,6 +60,16 @@ export interface ViewpointFieldInput {
   regionPolygon?: Feature<Polygon>;
   /** 紙座標を含む GCP 列（優先。無ければ surface.points） */
   gcps?: PointSet[];
+  /**
+   * 内側本体の長辺分割数（省略時は viewpoint-constants の N_LONG）。
+   * 実測（§2.2 4.）で分割数を変えて比較するための口。既定値は変えない。
+   */
+  nLong?: number;
+  /**
+   * 4 点プローブの半径（セル数、省略時は PROBE_RADIUS_CELLS）。
+   * 実測（§2.2 4.）で半径を変えて比較するための口。既定値は変えない。
+   */
+  probeRadiusCells?: number;
 }
 
 interface GridSpec {
@@ -138,7 +147,7 @@ export function classifyStrictness(surface: SurfaceLike, resolved?: LayerStrictn
 }
 
 
-function gridSpec(rect: PaperRect): GridSpec {
+function gridSpec(rect: PaperRect, nLong: number = N_LONG): GridSpec {
   const lx = rect.maxX - rect.minX;
   const ly = rect.maxY - rect.minY;
   if (!(lx > 0) || !(ly > 0)) {
@@ -147,11 +156,11 @@ function gridSpec(rect: PaperRect): GridSpec {
   const longSide = Math.max(lx, ly);
   const shortSide = Math.min(lx, ly);
   const nShort = Math.min(
-    N_SHORT_MAX,
-    Math.max(N_SHORT_MIN, Math.round((N_LONG * shortSide) / longSide))
+    nLong,
+    Math.max(N_SHORT_MIN, Math.round((nLong * shortSide) / longSide))
   );
-  const nxInner = lx >= ly ? N_LONG : nShort;
-  const nyInner = lx >= ly ? nShort : N_LONG;
+  const nxInner = lx >= ly ? nLong : nShort;
+  const nyInner = lx >= ly ? nShort : nLong;
   const dx = lx / nxInner;
   const dy = ly / nyInner;
   return {
@@ -241,8 +250,9 @@ function invertCoefficients(coef: ViewpointCoefficients | null): ViewpointCoeffi
 /**
  * 1 格子点の係数を 4 点プローブで求める（§1.2）。
  * 全プローブ失敗・境界外れ・det ≤ 0 のときは null（無効印）。
+ * 実測（§2.2 4. の局所値の基準）でも使うため公開する。
  */
-function probeCoefficients(
+export function probeCoefficients(
   surface: SurfaceLike,
   p0: number[],
   r: number,
@@ -320,15 +330,21 @@ export function interpolateGrid(grid: CoefficientGrid, x: number, y: number): Vi
   return { s, theta };
 }
 
-function buildGrid(surface: SurfaceLike, rect: PaperRect, backward: boolean): CoefficientGrid {
-  const spec = gridSpec(rect);
+function buildGrid(
+  surface: SurfaceLike,
+  rect: PaperRect,
+  backward: boolean,
+  probeRadiusCells: number = PROBE_RADIUS_CELLS,
+  nLong?: number
+): CoefficientGrid {
+  const spec = gridSpec(rect, nLong);
   const nx = spec.mx + 1;
   const ny = spec.my + 1;
   const ls = new Float64Array(nx * ny);
   const cs = new Float64Array(nx * ny);
   const sn = new Float64Array(nx * ny);
   const validMask = new Uint8Array(nx * ny);
-  const r = PROBE_RADIUS_CELLS * Math.min(spec.dx, spec.dy);
+  const r = probeRadiusCells * Math.min(spec.dx, spec.dy);
   for (let j = 0; j < ny; j++) {
     for (let i = 0; i < nx; i++) {
       const p0 = [spec.x0 + i * spec.dx, spec.y0 + j * spec.dy];
@@ -432,13 +448,21 @@ interface BuiltLayer {
 
 function buildLayerGrids(input: ViewpointFieldInput): BuiltLayer {
   const rect = input.paperRect ?? paperRectOf(input.surface);
-  const spec = gridSpec(rect);
+  const spec = gridSpec(rect, input.nLong);
   const paper =
-    input.strictness === "strict" ? undefined : buildGrid(input.surface, rect, false);
+    input.strictness === "strict"
+      ? undefined
+      : buildGrid(input.surface, rect, false, input.probeRadiusCells, input.nLong);
   const merc =
     input.strictness === "strict_error"
       ? undefined
-      : buildGrid(input.surface, mercRectOf(input.surface, rect), true);
+      : buildGrid(
+          input.surface,
+          mercRectOf(input.surface, rect),
+          true,
+          input.probeRadiusCells,
+          input.nLong
+        );
   return { rect, spec, paper, merc };
 }
 
