@@ -576,6 +576,34 @@ export class MapTransform {
     };
   }
 
+  /**
+   * 層番号を指定して、その層の視点係数 (s, θ) を引く公開 API（§7.1 補助メソッド・M-5）。
+   * デバッグ・単体試験・`setupMapParameter` 等から、層を 1 つに固定して
+   * 中心 1 点の縮尺・向きを問い合わせるために使う。
+   *
+   * @param layerIndex - 0 = 本図、1 以上 = sub_maps[layerIndex - 1]。範囲外番号・非整数は例外
+   * @param coord - 問い合わせ座標（direction が "xy2Merc" なら紙座標、"merc2Xy" ならメルカトル座標）
+   * @param direction - "xy2Merc"（既定）= 紙 → 地理の係数参照、"merc2Xy" = 地理 → 紙
+   * @returns 視点係数（s: 縮尺比 [3857 単位 / 地図画素]、theta: 局所回転角 [rad]）
+   */
+  getViewpointCoefficients(
+    layerIndex: number,
+    coord: number[],
+    direction: "xy2Merc" | "merc2Xy" = "xy2Merc"
+  ): ViewpointCoefficients {
+    this._assertMapData();
+    this._assertLayerIndex(layerIndex, "getViewpointCoefficients");
+    const surface = this.getSurfaceTransform(layerIndex)!;
+    if (direction === "xy2Merc") {
+      const c_merc = surface.transform(coord, false, true);
+      if (!c_merc) throw new Error("getViewpointCoefficients: transform failed");
+      return this._evalViewpointCoefficients(layerIndex, coord, c_merc, false);
+    }
+    const c_xy = surface.transform(coord, true, true);
+    if (!c_xy) throw new Error("getViewpointCoefficients: transform failed");
+    return this._evalViewpointCoefficients(layerIndex, c_xy, coord, true);
+  }
+
   // ─── ユーティリティ（静的メソッド）────────────────────────────────────────
 
   /** zoom2Radius の静的ラッパー */
