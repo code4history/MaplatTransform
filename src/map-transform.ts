@@ -1,15 +1,21 @@
 import type { Feature, Polygon } from "geojson";
 import { booleanPointInPolygon, point, polygon } from "@turf/turf";
 import { Transform } from "./transform.ts";
-import { zoom2Radius, mercViewpoint2Mercs, mercs2MercViewpoint } from "./viewpoint.ts";
+import { zoom2Radius, mercViewpoint2Mercs, mercs2MercViewpoint, wrapAngle } from "./viewpoint.ts";
 import { xy2SysCoord, sysCoord2Xy } from "./coord-utils.ts";
 import { WorldFileSurface } from "./world-file-surface.ts";
 import {
   builtinProjectionEngine, crsToMercator, layerCheckPoints, mercatorToCrs, validateLayerCrs
 } from "./projection.ts";
+import { deriveStrictStatus } from "./compiled-state.ts";
+import {
+  ViewpointField, classifyStrictness, paperRectOf
+} from "./viewpoint-field.ts";
+import type { LayerStrictness } from "./viewpoint-field.ts";
+import { MERC_MAX } from "./constants.ts";
 import type {
   CrsObject, LayerSurfaceData, LayeredMapData, MapData, ProjectionEngine, SurfaceLike,
-  TinSurfaceData, Viewpoint
+  TinSurfaceData, Viewpoint, ViewpointCoefficients, ViewpointMode
 } from "./types.ts";
 
 /** Internal representation of a loaded sub-map TIN entry */
@@ -19,6 +25,15 @@ interface SubTinEntry {
   importance: number;
   xyBounds: Feature<Polygon>;
   mercBounds: Feature<Polygon>;
+}
+
+/** ViewpointField 遅延構築用の層メタデータ */
+interface LayerFieldMeta {
+  strictness: LayerStrictness;
+  /** 副層の bounds（紙側基準矩形の上書き） */
+  rectOverride?: number[][];
+  /** 副層の bounds 多角形（G_in の ∩ subMap.bounds） */
+  regionPolygon?: Feature<Polygon>;
 }
 
 function validateTinCrs(
@@ -78,6 +93,21 @@ class ProjectedTinSurface extends Transform {
 /** Tile size constant (same as MaplatCore) */
 const TILE_SIZE = 256;
 
+/** TIN と world file の変換面を混在させて 1 層分の surface を作る */
+export function createLayerSurface(data: LayerSurfaceData): SurfaceLike {
+  if (data.kind === "worldFile") return new WorldFileSurface(data);
+  if ("crs" in data && data.crs === null) throw new Error("三角網の層の CRS は null にできません");
+  const crs = data.crs;
+  const engine = data.projectionEngine ?? builtinProjectionEngine;
+  if (crs !== undefined && crs.epsg !== 3857) return new ProjectedTinSurface(data, crs, engine);
+  const transform = new Transform();
+  transform.setCompiled(data.compiled);
+  if (crs !== undefined) {
+    validateTinCrs(transform, crs, engine, data.bounds, xy => transform.transform(xy, false, true));
+  }
+  return transform;
+}
+
 /**
  * MapTransform — 処理2・3・4を担う座標変換クラス
  *
@@ -91,6 +121,11 @@ export class MapTransform {
   private mainTin: SurfaceLike | null = null;
   private subTins: SubTinEntry[] = [];
   private _maxxy = 0;
+  /** 視点変換モード（地図全体で共通。未指定は "grid"） */
+  private _viewpointMode: ViewpointMode = "grid";
+  /** 層ごとの ViewpointField 遅延構築スロット（§2.3。読み込み時には作らない） */
+  private _fields: (ViewpointField | undefined)[] = [];
+  private _layerMetas: LayerFieldMeta[] = [];
 
   // ─── 初期化 ────────────────────────────────────────────────────────────────
 
@@ -112,6 +147,9 @@ export class MapTransform {
       this._maxxy = Math.pow(2, maxZoom) * TILE_SIZE;
     }
     this.subTins = [];
+    const layerMetas: LayerFieldMeta[] = [
+      { strictness: classifyStrictness(mainTin, deriveStrictStatus(mapData.compiled)) }
+    ];
     if (mapData.sub_maps) {
       for (const subMapData of mapData.sub_maps) {
         const tin = new Transform();
@@ -124,20 +162,29 @@ export class MapTransform {
           if (!merc) throw new Error("Failed to transform sub-map bounds to mercator");
           return merc;
         });
+        const xyBounds = polygon([xyBoundsCoords]) as Feature<Polygon>;
         this.subTins.push({
           tin,
           priority: subMapData.priority,
           importance: subMapData.importance,
-          xyBounds: polygon([xyBoundsCoords]) as Feature<Polygon>,
+          xyBounds,
           mercBounds: polygon([mercBoundsCoords]) as Feature<Polygon>
+        });
+        layerMetas.push({
+          strictness: classifyStrictness(tin, deriveStrictStatus(subMapData.compiled)),
+          rectOverride: rawBounds,
+          regionPolygon: xyBounds
         });
       }
     }
+    this._layerMetas = layerMetas;
+    this._viewpointMode = mapData.viewpointMode ?? "grid";
+    this._fields = [];
   }
 
   /** TIN と world file の変換面を混在させて読み込む */
   setLayeredMapData(mapData: LayeredMapData): void {
-    const mainTin = this._createSurface(mapData.main);
+    const mainTin = createLayerSurface(mapData.main);
     if (mapData.main.priority !== undefined) mainTin.priority = mapData.main.priority;
     if (mapData.main.importance !== undefined) mainTin.importance = mapData.main.importance;
     const mainWh = mapData.main.kind === "tin" ? mapData.main.compiled.wh : mainTin.wh;
@@ -151,8 +198,16 @@ export class MapTransform {
     }
 
     const subTins: SubTinEntry[] = [];
+    const layerMetas: LayerFieldMeta[] = [
+      {
+        strictness: classifyStrictness(
+          mainTin,
+          mapData.main.kind === "tin" ? deriveStrictStatus(mapData.main.compiled) : undefined
+        )
+      }
+    ];
     for (const subMapData of mapData.sub_maps ?? []) {
-      const surface = this._createSurface(subMapData);
+      const surface = createLayerSurface(subMapData);
       const rawBounds = subMapData.bounds ?? (subMapData.kind === "tin" ? subMapData.compiled.bounds : undefined);
       if (!rawBounds) throw new Error("副層には bounds または compiled.bounds が必要です");
       const xyBoundsCoords = [...rawBounds, rawBounds[0]];
@@ -161,31 +216,34 @@ export class MapTransform {
         if (!merc) throw new Error("副層の bounds をメルカトル座標へ変換できません");
         return merc;
       });
+      const xyBounds = polygon([xyBoundsCoords]) as Feature<Polygon>;
       subTins.push({
         tin: surface,
         priority: subMapData.priority ?? 0,
         importance: subMapData.importance ?? 0,
-        xyBounds: polygon([xyBoundsCoords]) as Feature<Polygon>,
+        xyBounds,
         mercBounds: polygon([mercBoundsCoords]) as Feature<Polygon>
+      });
+      layerMetas.push({
+        strictness: classifyStrictness(
+          surface,
+          subMapData.kind === "tin" ? deriveStrictStatus(subMapData.compiled) : undefined
+        ),
+        rectOverride: rawBounds,
+        regionPolygon: xyBounds
       });
     }
     this.mainTin = mainTin;
     this.subTins = subTins;
     this._maxxy = maxxy;
+    this._layerMetas = layerMetas;
+    this._viewpointMode = mapData.viewpointMode ?? "grid";
+    this._fields = [];
   }
 
-  private _createSurface(data: LayerSurfaceData): SurfaceLike {
-    if (data.kind === "worldFile") return new WorldFileSurface(data);
-    if ("crs" in data && data.crs === null) throw new Error("三角網の層の CRS は null にできません");
-    const crs = data.crs;
-    const engine = data.projectionEngine ?? builtinProjectionEngine;
-    if (crs !== undefined && crs.epsg !== 3857) return new ProjectedTinSurface(data, crs, engine);
-    const transform = new Transform();
-    transform.setCompiled(data.compiled);
-    if (crs !== undefined) {
-      validateTinCrs(transform, crs, engine, data.bounds, xy => transform.transform(xy, false, true));
-    }
-    return transform;
+  /** 読み込み時の地図全体の視点変換モード（未指定は "grid"） */
+  get viewpointMode(): ViewpointMode {
+    return this._viewpointMode;
   }
 
   // ─── 処理2: submap TIN 選択付き変換 ───────────────────────────────────────
@@ -437,71 +495,85 @@ export class MapTransform {
    * ビューポート → TIN 適用後メルカトル5点
    * histmap_tin.ts viewpoint2MercsAsync() の同期版
    *
+   * 中心と ViewpointField から理想相似 5 点をエンコードする（§7.1）。
+   * 周囲 4 点の幾何は中心と同じ層の格子からだけ決める。
+   *
    * @param viewpoint - ビューポート（center, zoom, rotation）
    * @param size - 画面サイズ [width, height]
+   * @param layerIndex - 層番号（省略時は従来の層選択。指定時は範囲判定なしでその層を使い、範囲外は格子端へ clamp）
    * @returns TIN 変換後のメルカトル5点
    */
-  viewpoint2Mercs(viewpoint: Viewpoint, size: [number, number]): number[][] {
+  viewpoint2Mercs(viewpoint: Viewpoint, size: [number, number], layerIndex?: number): number[][] {
     this._assertMapData();
     this._assertMaxxy();
 
-    // ビューポート → メルカトル5点（処理3の純粋関数）
-    const mercs = mercViewpoint2Mercs(viewpoint.center, viewpoint.zoom, viewpoint.rotation, size);
+    const c_xy = sysCoord2Xy(viewpoint.center, this._maxxy);
+    let layerIdx: number;
+    let c_merc: number[];
+    if (layerIndex !== undefined) {
+      this._assertLayerIndex(layerIndex, "viewpoint2Mercs");
+      const surface = this.getSurfaceTransform(layerIndex)!;
+      const transformed = surface.transform(c_xy, false, true);
+      if (!transformed) {
+        throw new Error(`viewpoint2Mercs: layer ${layerIndex} transform failed`);
+      }
+      layerIdx = layerIndex;
+      c_merc = transformed;
+    } else {
+      const centerResult = this.xy2MercWithLayer(c_xy);
+      if (!centerResult) throw new Error("viewpoint2Mercs: center point is out of bounds");
+      [layerIdx, c_merc] = centerResult;
+    }
 
-    // メルカトル → ピクセル座標（sysCoord2Xy）
-    const xys = mercs.map(merc => sysCoord2Xy(merc, this._maxxy));
+    const { s, theta } = this._evalViewpointCoefficients(layerIdx, c_xy, c_merc, false);
+    const alphaSys = (2 * MERC_MAX) / this._maxxy;
+    const z_merc = viewpoint.zoom + Math.log2(alphaSys / s);
+    const theta_merc = viewpoint.rotation + theta;
 
-    // ピクセル中心 → TIN 変換 → メルカトル中心
-    const centerResult = this.xy2MercWithLayer(xys[0]);
-    if (!centerResult) throw new Error("viewpoint2Mercs: center point is out of bounds");
-
-    const centerIndex = centerResult[0];
-    const centerMerc = centerResult[1];
-
-    // 残り4点を同じレイヤーで変換
-    const resultMercs: number[][] = xys.map((xy, i) => {
-      if (i === 0) return centerMerc;
-      const merc = this._transformByIndex(xy, centerIndex, false);
-      if (merc === false) throw new Error(`viewpoint2Mercs: point ${i} is out of bounds`);
-      return merc;
-    });
-
-    return resultMercs;
+    return mercViewpoint2Mercs(c_merc, z_merc, theta_merc, size);
   }
 
   /**
    * TIN 適用後メルカトル5点 → ビューポート
    * histmap_tin.ts mercs2ViewpointAsync() の同期版
    *
-   * @param mercs - TIN 変換後のメルカトル5点
+   * 5 点を理想相似としてデコードし、中心と ViewpointField から復元する（§7.1）。
+   *
+   * @param mercs - TIN 適用後メルカトル5点
    * @param size - 画面サイズ [width, height]
+   * @param layerIndex - 層番号（省略時は従来の層選択。指定時は範囲判定なしでその層を使い、範囲外は格子端へ clamp）
    * @returns ビューポート（center, zoom, rotation）
    */
-  mercs2Viewpoint(mercs: number[][], size: [number, number]): Viewpoint {
+  mercs2Viewpoint(mercs: number[][], size: [number, number], layerIndex?: number): Viewpoint {
     this._assertMapData();
     this._assertMaxxy();
 
-    // メルカトル中心 → TIN 逆変換 → ピクセル中心
-    const centerResults = this.merc2XyWithLayer(mercs[0]);
-    const result = centerResults[0] || centerResults[1];
-    if (!result) throw new Error("mercs2Viewpoint: center point is out of bounds");
+    const mercVp = mercs2MercViewpoint(mercs, size);
+    let layerIdx: number;
+    let c_xy: number[];
+    if (layerIndex !== undefined) {
+      this._assertLayerIndex(layerIndex, "mercs2Viewpoint");
+      const surface = this.getSurfaceTransform(layerIndex)!;
+      const transformed = surface.transform(mercVp.center, true, true);
+      if (!transformed) {
+        throw new Error(`mercs2Viewpoint: layer ${layerIndex} transform failed`);
+      }
+      layerIdx = layerIndex;
+      c_xy = transformed;
+    } else {
+      const centerResults = this.merc2XyWithLayer(mercVp.center);
+      const result = centerResults[0] || centerResults[1];
+      if (!result) throw new Error("mercs2Viewpoint: center point is out of bounds");
+      [layerIdx, c_xy] = result;
+    }
 
-    const centerIndex = result[0];
-    const centerXy = result[1];
-
-    // 残り4点を同じレイヤーで TIN 逆変換
-    const xys: number[][] = mercs.map((merc, i) => {
-      if (i === 0) return centerXy;
-      const xy = this._transformByIndex(merc, centerIndex, true);
-      if (xy === false) throw new Error(`mercs2Viewpoint: point ${i} is out of bounds`);
-      return xy;
-    });
-
-    // ピクセル → システム座標（xy2SysCoord）
-    const sysCoords = xys.map(xy => xy2SysCoord(xy, this._maxxy));
-
-    // システム座標5点 → ビューポート（mercs2MercViewpoint）
-    return mercs2MercViewpoint(sysCoords, size);
+    const { s, theta } = this._evalViewpointCoefficients(layerIdx, c_xy, mercVp.center, true);
+    const alphaSys = (2 * MERC_MAX) / this._maxxy;
+    return {
+      center: xy2SysCoord(c_xy, this._maxxy),
+      zoom: mercVp.zoom - Math.log2(alphaSys / s),
+      rotation: wrapAngle(mercVp.rotation - theta)
+    };
   }
 
   // ─── ユーティリティ（静的メソッド）────────────────────────────────────────
@@ -550,6 +622,41 @@ export class MapTransform {
         "MapData.maxZoom or compiled.wh must be set for viewpoint conversion (xy2SysCoord / sysCoord2Xy)"
       );
     }
+  }
+
+  /** 層番号の明示指定の検査（範囲外番号・負数・非整数は例外、§4.2 2.） */
+  private _assertLayerIndex(layerIndex: number, fnName: string): void {
+    if (!Number.isInteger(layerIndex) || layerIndex < 0 || layerIndex >= this.layerCount) {
+      throw new Error(`${fnName}: invalid layerIndex ${layerIndex}`);
+    }
+  }
+
+  /** 層の ViewpointField を遅延構築して返す（§2.3。読み込み時には作らない） */
+  private _fieldFor(layerIndex: number): ViewpointField {
+    const cached = this._fields[layerIndex];
+    if (cached) return cached;
+    const surface = this.getSurfaceTransform(layerIndex);
+    if (!surface) throw new Error(`invalid layerIndex ${layerIndex}`);
+    const meta = this._layerMetas[layerIndex];
+    const field = ViewpointField.build({
+      surface,
+      mode: this._viewpointMode === "constant" ? "constant" : "grid",
+      strictness: meta.strictness,
+      paperRect: meta.rectOverride ? paperRectOf(surface, meta.rectOverride) : undefined,
+      regionPolygon: meta.regionPolygon
+    });
+    this._fields[layerIndex] = field;
+    return field;
+  }
+
+  /** 中心 1 点の視点係数を層の ViewpointField から引く */
+  private _evalViewpointCoefficients(
+    layerIndex: number,
+    c_xy: number[],
+    c_merc: number[],
+    backward: boolean
+  ): ViewpointCoefficients {
+    return this._fieldFor(layerIndex).eval(c_xy, c_merc, backward);
   }
 
   /**

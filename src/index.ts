@@ -32,13 +32,24 @@ export { worldFileToCrs, crsToWorldFilePixel, validateWorldFile } from "./world-
 // New exports: constants, pure functions, MapTransform
 export { MERC_MAX, MERC_CROSSMATRIX } from "./constants.ts";
 export {
+  N_LONG,
+  N_SHORT_MIN,
+  N_SHORT_MAX,
+  N_MARGIN,
+  PROBE_RADIUS_CELLS,
+  JUDGE_STATISTIC,
+  ROTATION_THRESHOLD_DEG,
+  SCALE_RATIO_THRESHOLD
+} from "./viewpoint-constants.ts";
+export {
   zoom2Radius,
   rotateMatrix,
   mercViewpoint2Mercs,
-  mercs2MercViewpoint
+  mercs2MercViewpoint,
+  wrapAngle
 } from "./viewpoint.ts";
 export { xy2SysCoord, sysCoord2Xy } from "./coord-utils.ts";
-export { MapTransform } from "./map-transform.ts";
+export { MapTransform, createLayerSurface } from "./map-transform.ts";
 export type {
   Viewpoint,
   SubMapData,
@@ -50,5 +61,7 @@ export type {
   TinSurfaceData,
   WorldFileSurfaceData,
   LayerSurfaceData,
-  LayeredMapData
+  LayeredMapData,
+  ViewpointMode,
+  ViewpointCoefficients
 } from "./types.ts";
