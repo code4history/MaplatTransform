@@ -84,6 +84,40 @@ For sub-map selection, viewport transformation, and cross-map viewport
 synchronization, see the
 [Wiki Tutorials](https://github.com/code4history/MaplatTransform/wiki/Tutorials).
 
+### Viewpoint modes (round-trip viewport conversion)
+
+`viewpoint2Mercs(viewpoint, size, layerIndex?)` and
+`mercs2Viewpoint(mercs, size, layerIndex?)` keep the five-point `mercs` relay
+contract but encode an ideal similarity: the surrounding four points are derived
+from a per-layer `ViewpointField` of local scale `s` and rotation `theta`, so any
+zoom and window size round-trips exactly on strict maps and never throws on
+leg overflow.
+
+- `viewpointMode: "constant" | "grid"` (map-wide, on `MapData` / `LayeredMapData`;
+  omitted means `"grid"`) selects between one fixed `(s0, theta0)` per layer and a
+  lazily built grid of per-node coefficients with smooth interpolation. Grids are
+  built on first viewpoint conversion, never at load time.
+- The optional `layerIndex` pins the layer (0 = main, 1+ = `sub_maps`). Without it,
+  the existing layer-selection rules apply and coefficients come only from the
+  center layer's grid. Out-of-range or non-integer indexes throw.
+- `getViewpointCoefficients(layerIndex, coord, direction?)` returns the `{ s, theta }`
+  of one layer at one point (`"xy2Merc"` for paper coordinates, `"merc2Xy"` for
+  mercator coordinates).
+- `recommendViewpointMode(layerSurfaceData, { projectionEngine?, gcps? })` returns
+  `{ recommended, maxRotationDiffDeg, p95RotationDiffDeg, maxScaleRatioDiff,
+  p95ScaleRatioDiff, sampleCount }` and recommends `"constant"` when the GCP hull
+  interior (or, without GCPs, the layer extent) varies within the thresholds.
+
+```typescript
+import { MapTransform, recommendViewpointMode } from '@maplat/transform';
+
+const map = new MapTransform();
+map.setLayeredMapData({ main: surfaceData, viewpointMode: 'grid' });
+const mercs = map.viewpoint2Mercs(viewpoint, [800, 600], 0); // pin layer 0
+const back = map.mercs2Viewpoint(mercs, [800, 600], 0);
+const { recommended } = recommendViewpointMode(surfaceData, { gcps });
+```
+
 ### World-file surfaces
 
 `MapTransform.setLayeredMapData()` accepts a world-file surface as the main map or a sub-map. A world file uses the standard six named coefficients; `xOrigin` and `yOrigin` refer to the center of the upper-left pixel. Pixel coordinates use the image corner as the origin, so the conversion subtracts one half pixel before applying the affine coefficients.

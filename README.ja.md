@@ -81,6 +81,36 @@ const restored = transform.transform(transformed, true);
 サブマップ選択・ビューポート変換・地図間ビューポート同期については
 [Wiki Tutorials](https://github.com/code4history/MaplatTransform/wiki/Tutorials) を参照してください。
 
+### 視点の変換モード（ラウンドトリップ対応の視点変換）
+
+`viewpoint2Mercs(viewpoint, size, layerIndex?)` と `mercs2Viewpoint(mercs, size, layerIndex?)` は
+5 点 `mercs` 中継の契約を保ったまま理想相似をエンコードします。周囲 4 点は層ごとの
+`ViewpointField`（局所縮尺 `s`・回転 `theta`）からだけ決まるため、strict な地図では
+任意のズーム・画面サイズで厳密に往復し、足の先端のはみ出しで例外になりません。
+
+- `viewpointMode: "constant" | "grid"`（`MapData` / `LayeredMapData` 最上位。省略時は `"grid"`）で、
+  層ごとの固定値 `(s0, theta0)` と、遅延構築される格子の滑らかな補間を切り替えます。
+  格子は最初の視点変換のときに層単位で構築し、読み込み時には作りません。
+- 省略可能な `layerIndex` で層を固定できます（0 = 本図、1 以上 = `sub_maps`）。
+  省略時は従来の層選択のままで、係数は中心の層の格子からだけ引きます。
+  範囲外の番号・非整数は例外になります。
+- `getViewpointCoefficients(layerIndex, coord, direction?)` は層を 1 つ指定して
+  中心 1 点の `{ s, theta }` を返します（`"xy2Merc"` は紙座標、`"merc2Xy"` はメルカトル座標）。
+- `recommendViewpointMode(layerSurfaceData, { projectionEngine?, gcps? })` は
+  `{ recommended, maxRotationDiffDeg, p95RotationDiffDeg, maxScaleRatioDiff,
+  p95ScaleRatioDiff, sampleCount }` を返し、GCP 凸包の内側（GCP が無いときは層の範囲）の
+  変動が閾値内なら `"constant"` を推奨します。
+
+```typescript
+import { MapTransform, recommendViewpointMode } from '@maplat/transform';
+
+const map = new MapTransform();
+map.setLayeredMapData({ main: surfaceData, viewpointMode: 'grid' });
+const mercs = map.viewpoint2Mercs(viewpoint, [800, 600], 0); // 層 0 を固定
+const back = map.mercs2Viewpoint(mercs, [800, 600], 0);
+const { recommended } = recommendViewpointMode(surfaceData, { gcps });
+```
+
 ### World file 面
 
 `MapTransform.setLayeredMapData()` は、メイン地図または副地図として world file 面を受け取ります。world file は名前付き6係数を使い、`xOrigin`・`yOrigin` は左上画素の中心を指します。画素座標の原点は画像の角なので、アフィン変換の前に各座標から半画素を引きます。
