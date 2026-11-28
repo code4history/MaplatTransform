@@ -162,7 +162,7 @@ function writeMaps(targets: Target[]): void {
     ),
     "",
     "計測は各 fixture の主層（`1932_nobeoka_sub0_v3` と AT 合成副層のみその層そのもの）を 1 層の地図として行った。",
-    "旧 5 点参照の代表ズームは、5 点半径（画面短辺の 1/4）が紙の長辺の 1/8・1/64・1/512 になるよう各図ごとに決めた（表 3 に実半径を記載）。"
+    "旧 5 点参照の代表ズームは、5 点半径（画面短辺の 1/4）が紙の長辺の 1/8・1/64・1/512 になるよう各図ごとに決めた（表 2c に実半径を記載）。"
   ].join("\n");
   writeRegion(ROOT, DOC, "maps", body);
 }
@@ -354,6 +354,7 @@ function writeSection2(targets: Target[]): void {
     "`(zoom, rotation)` の隣接ステップ差の最大を出す。セルは `最大Δ回転(°)/最大Δzoom`。",
     "旧 5 点は同じ経路を半径 紙の長辺/64 の 5 点で測った参考値（AT-5 の旧方式に相当）。",
     "",
+    "#### 表 3 滑らかさ（1 px パンの最大段差）",
     mdTable(header, rows)
   ].join("\n");
   writeRegion(ROOT, DOC, "sec2", body);
@@ -408,6 +409,7 @@ function writeSection3(targets: Target[]): void {
     `中心 ${CENTERS_RT} 点 × ズーム ${ZOOMS_RT.join("・")} × 回転 ${ROTS_RT.map(r => fmt(r, 2)).join("・")}、層 0 固定）。`,
     "`strict_error` は逆変換が例外のため往復の対象外（—）。",
     "",
+    "#### 表 4 往復誤差の最大（center px / zoom / rotation）",
     mdTable(header, rows)
   ].join("\n");
   writeRegion(ROOT, DOC, "sec3", body);
@@ -519,13 +521,13 @@ function writeSection4(targets: Target[]): void {
     `セルは ms（中央値 / 最大・${RUNS} 回）。索引なしは \`indexedTins = undefined\` の線形探索。`,
     "「1 層の格子」はモード 2（grid）1 面分（loose は紙・地理 2 面）。「モード 1 起動時」は既定定数で 1 層分を構築して s0 を出すまで。",
     "",
-    "#### 表 6a 1 層の格子構築時間（ms）",
+    "#### 表 5a 1 層の格子構築時間（ms）",
     mdTable(["地図", "N_long", "索引あり", "索引なし"], gridRows),
     "",
-    "#### 表 6b モード 1 起動時（1 層構築 + s0、既定定数 N16 r1）",
+    "#### 表 5b モード 1 起動時（1 層構築 + s0、既定定数 N16 r1）",
     mdTable(["地図", "中央値 / 最大 (ms)"], startupRows),
     "",
-    "#### 表 6c 視点変換 1 回（格子構築後・既定定数。µs/回、5 バッチ × 20000 回の中央値）",
+    "#### 表 5c 視点変換 1 回（格子構築後・既定定数。µs/回、5 バッチ × 20000 回の中央値）",
     mdTable(["地図", "viewpoint2Mercs", "mercs2Viewpoint"], convRows)
   ].join("\n");
   writeRegion(ROOT, DOC, "sec4", body);
@@ -577,6 +579,7 @@ function writeSection5(targets: Target[]): void {
     "「max 判定」は最大値で、「p95 判定」は 95% 分位で閾値を当てたときの推奨（§5.2 の max vs p95 選定材料）。",
     "「gcps あり」は紙座標つき GCP を明示渡ししたとき（TIN は compiled.points と同じ。AT 合成歪み TIN のみ中央 5×5）。",
     "",
+    "#### 表 6 判定（recommendViewpointMode・閾値 1.0° / 2.0%）",
     mdTable(
       ["地図", "GCP", "回転max(°)", "回転p95(°)", "縮尺max(%)", "縮尺p95(%)", "標本数", "max判定", "p95判定", "備考"],
       rows
