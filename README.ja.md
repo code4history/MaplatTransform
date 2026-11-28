@@ -105,6 +105,14 @@ const restored = transform.transform(transformed, true);
   p95ScaleRatioDiff, sampleCount }` を返し、GCP 凸包の内側（GCP が無いときは層の範囲）の
   変動が判定基準（統計量は最大値でなく p95。p95 回転偏差 1.0° 以内かつ p95 縮尺比偏差 3% 以内）
   以内なら `"constant"` を推奨します。
+- 副層が重なる地図で厳密に往復するには `layerIndex` の指定が要ります。
+  省略すると従来の層選択で行きと帰りに別の層が選ばれ、係数を別の格子から引くことがあります。
+- 厳密さは層ごとの別です。`strict`（既定）は地理側の格子 1 面で厳密に往復し、
+  `loose` は紙側と地理側の 2 面を持ち厳密な往復の対象外、`strict_error` は
+  従来どおり逆方向が例外になります。
+- 格子の範囲の外では端の値に張り付くため、範囲外の中心でも例外にならず有限かつ連続に留まります。
+- 格子は層の矩形の長辺を 16 分割し、各辺に 2 セルの余白を付けます
+  （短辺はアスペクト比に比例し、8〜16 分割に収めます）。
 
 ```typescript
 import { MapTransform, recommendViewpointMode } from '@maplat/transform';

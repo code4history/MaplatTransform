@@ -622,6 +622,7 @@ function writeSection5(targets: Target[]): void {
     "「gcps あり」は紙座標つき GCP を明示渡ししたとき（TIN は compiled.points と同じ。AT 合成歪み TIN のみ中央 5×5）。",
     "",
     "#### 表 6 判定（recommendViewpointMode・閾値 1.0° / 2.0%）",
+    "※ 仮の閾値（2%・max）での値。確定後は fushimijo 系が constant（§7）。",
     mdTable(
       ["地図", "GCP", "回転max(°)", "回転p95(°)", "縮尺max(%)", "縮尺p95(%)", "標本数", "max判定", "p95判定", "備考"],
       rows

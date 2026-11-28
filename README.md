@@ -114,6 +114,18 @@ leg overflow.
   interior (or, without GCPs, the layer extent) varies within the judgment
   criteria (p95 rotation deviation ≤ 1.0° and p95 scale ratio deviation ≤ 3%;
   judged on the p95 statistic rather than the maximum).
+- On maps whose sub-maps overlap, pinning `layerIndex` is required for an exact
+  round-trip. Without it the existing layer-selection rules can pick different
+  layers for the two directions, and the coefficients come from different grids.
+- Strictness is decided per layer: `strict` (the default) round-trips exactly
+  from one geographic-side grid; `loose` keeps two grids (paper-side and
+  geographic-side) and is outside the exact round-trip guarantee; `strict_error`
+  still throws when the backward direction is used.
+- Outside the grid the coefficients clamp to the edge values, so a center
+  outside the map stays finite and continuous instead of throwing.
+- The grid divides the long side of the layer rectangle into 16 segments and
+  adds a 2-cell margin on every side (the short side is proportional to the
+  aspect ratio, clamped between 8 and 16 segments).
 
 ```typescript
 import { MapTransform, recommendViewpointMode } from '@maplat/transform';
