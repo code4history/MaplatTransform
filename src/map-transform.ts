@@ -137,7 +137,9 @@ export class MapTransform {
    * @param mapData - メイン TIN と sub_maps の情報
    */
   setMapData(mapData: MapData): void {
-    // 既定 API は従来の構築順と例外順を保つ。
+    // 既定 API は従来の構築順と例外順を保つ。途中で例外が出ても古い格子を残さない。
+    this._fields = [];
+    this._layerMetas = [];
     const mainTin = new Transform();
     mainTin.setCompiled(mapData.compiled);
     this.mainTin = mainTin;
@@ -186,6 +188,9 @@ export class MapTransform {
 
   /** TIN と world file の変換面を混在させて読み込む */
   setLayeredMapData(mapData: LayeredMapData): void {
+    // 途中で例外が出ても古い格子を残さない（setMapData と同じ）
+    this._fields = [];
+    this._layerMetas = [];
     const mainTin = createLayerSurface(mapData.main);
     if (mapData.main.priority !== undefined) mainTin.priority = mapData.main.priority;
     if (mapData.main.importance !== undefined) mainTin.importance = mapData.main.importance;
@@ -742,7 +747,10 @@ export class MapTransform {
     return sub?.tin instanceof Transform ? sub.tin : null;
   }
 
-  /** レイヤーインデックスに対応する変換面を返す */
+  /**
+   * レイヤーインデックスに対応する変換面を返す。
+   * 返した面を外で差し替えたら、地図を読み込み直すこと（視点の格子は作り直されない）。
+   */
   getSurfaceTransform(idx: number): SurfaceLike | null {
     if (idx === 0) return this.mainTin;
     return this.subTins[idx - 1]?.tin ?? null;

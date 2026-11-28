@@ -523,6 +523,23 @@ describe("ViewpointField のキャッシュと遅延構築", () => {
     expect(fieldsOf(mt).filter(Boolean)).toHaveLength(0);
   });
 
+  it("setMapData が途中で例外を出しても古い格子が残らない", () => {
+    const compiled = loadCompiled("18th_mapcontest_gp", "v3");
+    const metasOf = (mt: MapTransform): unknown[] =>
+      (mt as unknown as { _layerMetas: unknown[] })._layerMetas;
+    const mt = new MapTransform();
+    mt.setMapData({ compiled, maxZoom: 5 });
+    mt.getViewpointCoefficients(0, [2000, 2000], "xy2Merc");
+    expect(fieldsOf(mt).filter(Boolean)).toHaveLength(1);
+    // bounds の無い副層で sub_maps の処理の途中で例外になる
+    expect(() =>
+      mt.setMapData({ compiled, maxZoom: 5, sub_maps: [{ compiled, priority: 1, importance: 0 }] })
+    ).toThrow(/bounds/);
+    // 古い格子も古い層メタも残らない
+    expect(fieldsOf(mt).filter(Boolean)).toHaveLength(0);
+    expect(metasOf(mt)).toHaveLength(0);
+  });
+
   it("副層の constant は層ごとに別の s0 を持つ", () => {
     const mt = new MapTransform();
     mt.setMapData({
