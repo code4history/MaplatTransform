@@ -501,19 +501,21 @@ function writeSection4(targets: Target[]): void {
         const p = refs.samples[i % refs.samples.length];
         mt.viewpoint2Mercs({ center: xy2SysCoord(p, target.maxxy), zoom: 12, rotation: 0 }, SIZE, 0);
       }, n));
-      const mercsCache = refs.samples.slice(0, 200).map(p =>
-        mt.viewpoint2Mercs({ center: xy2SysCoord(p, target.maxxy), zoom: 12, rotation: 0 }, SIZE, 0)
-      );
-      bwdTimes.push(batch(i => {
-        mt.mercs2Viewpoint(mercsCache[i % mercsCache.length], SIZE, 0);
-      }, n));
+      if (target.strictness !== "strict_error") {
+        const mercsCache = refs.samples.slice(0, 200).map(p =>
+          mt.viewpoint2Mercs({ center: xy2SysCoord(p, target.maxxy), zoom: 12, rotation: 0 }, SIZE, 0)
+        );
+        bwdTimes.push(batch(i => {
+          mt.mercs2Viewpoint(mercsCache[i % mercsCache.length], SIZE, 0);
+        }, n));
+      }
     }
     fwdTimes.sort((a, b) => a - b);
     bwdTimes.sort((a, b) => a - b);
     convRows.push([
       target.id,
       fmtUs(fwdTimes[2]),
-      fmtUs(bwdTimes[2])
+      bwdTimes.length ? fmtUs(bwdTimes[2]) : "—（strict_error）"
     ]);
   }
 

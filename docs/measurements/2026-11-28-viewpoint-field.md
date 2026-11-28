@@ -13,7 +13,7 @@
 | 項目 | 値 |
 |---|---|
 | 計測日 | 2026-11-28 |
-| commit | 6f77219c01b194f8342459ebcdbcca35946f5578 |
+| commit | c29a1601cb30fcd67e61ccefd11a3807f1d54500 |
 | CPU | Apple M1 × 8 コア |
 | メモリ | 16.0 GB |
 | OS | darwin 27.2.0 arm64 |
@@ -312,6 +312,50 @@ GCP 凸包の外接矩形の中段を 1 px 刻みでパンし、公開 API `view
 1 層の格子構築時間（中央値と最大・10 回）を `N_long` ごと・`indexedTins` の有無ごとに、モード 1 起動時（1 層分を作って `s0` を出す）と、格子構築後の視点変換 1 回の時間と併せて出す。
 
 <!-- bench:sec4 -->
+セルは ms（中央値 / 最大・10 回）。索引なしは `indexedTins = undefined` の線形探索。
+「1 層の格子」はモード 2（grid）1 面分（loose は紙・地理 2 面）。「モード 1 起動時」は既定定数で 1 層分を構築して s0 を出すまで。
+
+#### 表 5a 1 層の格子構築時間（ms）
+| 地図 | N_long | 索引あり | 索引なし |
+|---|---|---|---|
+| naramachi_yasui_revised_v3 | 8 | 1.58 / 3.18 | 155 / 157 |
+| naramachi_yasui_revised_v3 | 16 | 1.29 / 1.96 | 444 / 475 |
+| naramachi_yasui_revised_v3 | 32 | 4.15 / 9.34 | 1308 / 1318 |
+| naramachi_yasui_revised_v3 | 64 | 13.3 / 14.0 | 4441 / 4477 |
+| naramachi_yasui_bunko_v3 | 8 | 0.90 / 1.03 | 161 / 162 |
+| naramachi_yasui_bunko_v3 | 16 | 1.08 / 1.56 | 348 / 349 |
+| naramachi_yasui_bunko_v3 | 32 | 3.43 / 3.54 | 972 / 1120 |
+| naramachi_yasui_bunko_v3 | 64 | 10.9 / 11.4 | 3076 / 3104 |
+| 18th_mapcontest_gp_v3 | 8 | 1.07 / 14.1 | 79.4 / 81.8 |
+| 18th_mapcontest_gp_v3 | 16 | 2.01 / 2.30 | 194 / 200 |
+| 18th_mapcontest_gp_v3 | 32 | 6.12 / 6.37 | 583 / 590 |
+| 18th_mapcontest_gp_v3 | 64 | 21.0 / 21.6 | 2037 / 2097 |
+| fushimijo_maplat_v3 | 8 | 0.36 / 0.38 | 49.6 / 51.0 |
+| fushimijo_maplat_v3 | 16 | 0.79 / 1.21 | 105 / 108 |
+| fushimijo_maplat_v3 | 32 | 2.41 / 2.95 | 305 / 396 |
+| fushimijo_maplat_v3 | 64 | 8.46 / 9.12 | 989 / 1195 |
+| AT_synthetic_main | 8 | 0.70 / 2.04 | 1.70 / 2.42 |
+| AT_synthetic_main | 16 | 0.88 / 1.21 | 3.34 / 3.44 |
+| AT_synthetic_main | 32 | 2.44 / 2.57 | 7.86 / 7.91 |
+| AT_synthetic_main | 64 | 7.45 / 7.76 | 23.3 / 23.4 |
+
+#### 表 5b モード 1 起動時（1 層構築 + s0、既定定数 N16 r1）
+| 地図 | 中央値 / 最大 (ms) |
+|---|---|
+| naramachi_yasui_revised_v3 | 2.48 / 4.44 |
+| naramachi_yasui_bunko_v3 | 1.69 / 3.06 |
+| 18th_mapcontest_gp_v3 | 2.49 / 3.19 |
+| fushimijo_maplat_v3 | 1.32 / 2.98 |
+| AT_synthetic_main | 1.18 / 1.86 |
+
+#### 表 5c 視点変換 1 回（格子構築後・既定定数。µs/回、5 バッチ × 20000 回の中央値）
+| 地図 | viewpoint2Mercs | mercs2Viewpoint |
+|---|---|---|
+| naramachi_yasui_revised_v3 | 1.0 | 1.4 |
+| naramachi_yasui_bunko_v3 | 1.0 | —（strict_error） |
+| 18th_mapcontest_gp_v3 | 0.9 | 1.4 |
+| fushimijo_maplat_v3 | 0.9 | 0.9 |
+| AT_synthetic_main | 0.7 | 0.7 |
 <!-- /bench:sec4 -->
 
 ## 5. 判定（§5.2・max と p95、閾値 1.0° / 2%）
