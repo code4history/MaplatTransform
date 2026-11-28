@@ -46,11 +46,15 @@ export function recommendViewpointMode(
     layerSurfaceData.kind === "tin"
       ? classifyStrictness(surface, deriveStrictStatus(layerSurfaceData.compiled))
       : classifyStrictness(surface);
+  // 層の範囲は MapTransform の副層と同じく bounds ?? compiled.bounds（§5.1 2.）
+  const rawBounds =
+    layerSurfaceData.bounds ??
+    (layerSurfaceData.kind === "tin" ? layerSurfaceData.compiled.bounds : undefined);
   const input: ViewpointFieldInput = {
     surface,
     mode: "grid",
     strictness,
-    regionPolygon: boundsPolygonOf(layerSurfaceData.bounds),
+    regionPolygon: boundsPolygonOf(rawBounds),
     gcps: options?.gcps
   };
   const samples = collectGInSamples(input);

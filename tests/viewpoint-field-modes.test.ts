@@ -7,10 +7,10 @@ import {
   createProj4ProjectionEngine,
   mercs2MercViewpoint,
   worldFileToCrs,
-  wrapAngle,
   xy2SysCoord
 } from "../src/index.ts";
-import { createLayerSurface } from "../src/index.ts";
+import { wrapAngle } from "../src/viewpoint.ts";
+import { createLayerSurface } from "../src/map-transform.ts";
 import type { MapData, PointSet, TinSurfaceData, Viewpoint, WorldFile, WorldFileSurfaceData } from "../src/index.ts";
 import {
   deviationStats,
@@ -338,6 +338,26 @@ describe("AT-7 モード 1 算出・判定基準の境界", () => {
     expect(withoutGcps.recommended).toBe("constant");
     expect(withGcps.maxRotationDiffDeg).toBeLessThanOrEqual(1e-6);
     expect(withoutGcps.maxScaleRatioDiff).toBeLessThanOrEqual(1e-6);
+  });
+
+  it("recommendViewpointMode の層の範囲は bounds ?? compiled.bounds（MapTransform と同じ）", () => {
+    const base = loadCompiled("fushimijo_maplat", "v3");
+    const region: number[][] = [[300, 300], [1200, 300], [1200, 1700], [300, 1700]];
+    const withCompiledBounds = structuredClone(base);
+    withCompiledBounds.bounds = region;
+    // compiled.bounds だけの層は、layerSurfaceData.bounds を明示したときと同じ範囲で判定する
+    const fromCompiled = recommendViewpointMode({ kind: "tin", compiled: withCompiledBounds });
+    const fromLayerBounds = recommendViewpointMode({
+      kind: "tin",
+      compiled: structuredClone(base),
+      bounds: region
+    });
+    expect(fromCompiled.sampleCount).toBe(fromLayerBounds.sampleCount);
+    expect(fromCompiled.maxRotationDiffDeg).toBeCloseTo(fromLayerBounds.maxRotationDiffDeg, 12);
+    expect(fromCompiled.p95ScaleRatioDiff).toBeCloseTo(fromLayerBounds.p95ScaleRatioDiff, 12);
+    // 範囲で絞らないと標本が増える（compiled.bounds の fallback が効いていること）
+    const withoutBounds = recommendViewpointMode({ kind: "tin", compiled: structuredClone(base) });
+    expect(fromCompiled.sampleCount).toBeLessThan(withoutBounds.sampleCount);
   });
 
   it("③ 実在図の判定（表 6 の値）: p95・3% で fushimijo 系は constant、miesan_ginza_map は grid のまま", () => {

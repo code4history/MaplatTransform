@@ -6,10 +6,10 @@ import {
   MapTransform,
   createProj4ProjectionEngine,
   worldFileToCrs,
-  wrapAngle,
   xy2SysCoord,
   sysCoord2Xy
 } from "../src/index.ts";
+import { wrapAngle } from "../src/viewpoint.ts";
 import type { MapData, Viewpoint, WorldFile, WorldFileSurfaceData } from "../src/index.ts";
 import { probeCoefficients } from "../src/viewpoint-field.ts";
 

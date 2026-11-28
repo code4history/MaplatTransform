@@ -126,8 +126,6 @@ export class MapTransform {
   /** 層ごとの ViewpointField 遅延構築スロット（§2.3。読み込み時には作らない） */
   private _fields: (ViewpointField | undefined)[] = [];
   private _layerMetas: LayerFieldMeta[] = [];
-  /** ViewpointField の分割数・プローブ半径の上書き（実測用。省略時は viewpoint-constants の既定値） */
-  private _fieldParams: { nLong?: number; probeRadiusCells?: number } = {};
 
   // ─── 初期化 ────────────────────────────────────────────────────────────────
 
@@ -251,17 +249,6 @@ export class MapTransform {
   /** 読み込み時の地図全体の視点変換モード（未指定は "grid"） */
   get viewpointMode(): ViewpointMode {
     return this._viewpointMode;
-  }
-
-  /**
-   * ViewpointField の分割数（nLong）・4 点プローブ半径（probeRadiusCells）を上書きする。
-   * 呼び出し済みの層の格子は破棄され、次の視点変換で組み直される。
-   * 省略した項目は viewpoint-constants の既定値に戻る。
-   * @internal（実測用。公開 API ではない）
-   */
-  setViewpointFieldParams(params: { nLong?: number; probeRadiusCells?: number }): void {
-    this._fieldParams = { ...params };
-    this._fields = [];
   }
 
   // ─── 処理2: submap TIN 選択付き変換 ───────────────────────────────────────
@@ -717,9 +704,7 @@ export class MapTransform {
       mode: this._viewpointMode === "constant" ? "constant" : "grid",
       strictness: meta.strictness,
       paperRect: meta.rectOverride ? paperRectOf(surface, meta.rectOverride) : undefined,
-      regionPolygon: meta.regionPolygon,
-      nLong: this._fieldParams.nLong,
-      probeRadiusCells: this._fieldParams.probeRadiusCells
+      regionPolygon: meta.regionPolygon
     });
     this._fields[layerIndex] = field;
     return field;

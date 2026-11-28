@@ -35,11 +35,10 @@ export {
   zoom2Radius,
   rotateMatrix,
   mercViewpoint2Mercs,
-  mercs2MercViewpoint,
-  wrapAngle
+  mercs2MercViewpoint
 } from "./viewpoint.ts";
 export { xy2SysCoord, sysCoord2Xy } from "./coord-utils.ts";
-export { MapTransform, createLayerSurface } from "./map-transform.ts";
+export { MapTransform } from "./map-transform.ts";
 export { recommendViewpointMode } from "./recommend-viewpoint.ts";
 export type {
   Viewpoint,

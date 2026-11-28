@@ -23,7 +23,7 @@ import type { ViewpointFieldInput } from "../../src/viewpoint-field.ts";
 import { MapTransform } from "../../src/map-transform.ts";
 import { Transform } from "../../src/transform.ts";
 import { MERC_MAX } from "../../src/constants.ts";
-import { mercs2MercViewpoint, wrapAngle } from "../../src/viewpoint.ts";
+import { mercViewpoint2Mercs, mercs2MercViewpoint, wrapAngle } from "../../src/viewpoint.ts";
 import { sysCoord2Xy, xy2SysCoord } from "../../src/coord-utils.ts";
 import { recommendViewpointMode } from "../../src/recommend-viewpoint.ts";
 import type { Viewpoint, ViewpointCoefficients, RecommendViewpointModeResult } from "../../src/types.ts";
@@ -122,6 +122,48 @@ function mapTransformOf(target: Target): MapTransform {
     mt.setLayeredMapData({ main: target.layerData, maxZoom: target.maxZoom });
   }
   return mt;
+}
+
+/**
+ * §7.1 のエンコード／デコードを ViewpointField 直結で行う。
+ * 分割数・プローブ半径を変える実測は ViewpointField.build を直接組み立てる
+ * （公開 API に実測用の口は持たせない）。
+ */
+function vp2MercsWith(
+  field: ViewpointField,
+  target: Target,
+  viewpoint: Viewpoint,
+  size: [number, number]
+): number[][] {
+  const c_xy = sysCoord2Xy(viewpoint.center, target.maxxy);
+  const c_merc = target.surface.transform(c_xy, false, true);
+  if (!finite2(c_merc)) throw new Error("bench: 中心の変換に失敗しました");
+  const { s, theta } = field.eval(c_xy, c_merc, false);
+  const alphaSys = (2 * MERC_MAX) / target.maxxy;
+  return mercViewpoint2Mercs(
+    c_merc,
+    viewpoint.zoom + Math.log2(alphaSys / s),
+    viewpoint.rotation + theta,
+    size
+  );
+}
+
+function mercs2VpWith(
+  field: ViewpointField,
+  target: Target,
+  mercs: number[][],
+  size: [number, number]
+): Viewpoint {
+  const mercVp = mercs2MercViewpoint(mercs, size);
+  const c_xy = target.surface.transform(mercVp.center, true, true);
+  if (!finite2(c_xy)) throw new Error("bench: 中心の逆変換に失敗しました");
+  const { s, theta } = field.eval(c_xy, mercVp.center, true);
+  const alphaSys = (2 * MERC_MAX) / target.maxxy;
+  return {
+    center: xy2SysCoord(c_xy, target.maxxy),
+    zoom: mercVp.zoom - Math.log2(alphaSys / s),
+    rotation: wrapAngle(mercVp.rotation - theta)
+  };
 }
 
 // ─── 表 1・環境 ───────────────────────────────────────────────────────────────
@@ -313,15 +355,14 @@ function writeSection2(targets: Target[]): void {
     };
 
     const cells: string[] = [];
-    const mt = mapTransformOf(target);
     for (const combo of COMBOS) {
-      mt.setViewpointFieldParams({ nLong: combo.nLong, probeRadiusCells: combo.probeRadiusCells });
+      const field = ViewpointField.build(gridInput(target, combo.nLong, combo.probeRadiusCells));
       const series: { z: number; theta: number }[] = [];
       let failed = 0;
       for (let s = 0; s <= steps; s++) {
         const vp: Viewpoint = { center: centerSys(x0 + s), zoom: PAN_ZOOM, rotation: PAN_ROTATION };
         try {
-          const mercs = mt.viewpoint2Mercs(vp, SIZE, 0);
+          const mercs = vp2MercsWith(field, target, vp, SIZE);
           const decoded = mercs2MercViewpoint(mercs, SIZE);
           series.push({ z: decoded.zoom, theta: decoded.rotation });
         } catch {
@@ -373,21 +414,20 @@ function writeSection3(targets: Target[]): void {
     const refs = refsOf(target);
     const centers = refs.samples.slice(0, CENTERS_RT);
     const cells: string[] = [];
-    const mt = mapTransformOf(target);
     for (const combo of COMBOS) {
       if (target.strictness === "strict_error") {
         cells.push("—");
         continue;
       }
-      mt.setViewpointFieldParams({ nLong: combo.nLong, probeRadiusCells: combo.probeRadiusCells });
+      const field = ViewpointField.build(gridInput(target, combo.nLong, combo.probeRadiusCells));
       let maxC = 0, maxZ = 0, maxR = 0, ok = 0, failed = 0;
       for (const c of centers) {
         for (const zoom of ZOOMS_RT) {
           for (const rot of ROTS_RT) {
             const vp: Viewpoint = { center: xy2SysCoord(c, target.maxxy), zoom, rotation: rot };
             try {
-              const mercs = mt.viewpoint2Mercs(vp, SIZE_SMALL, 0);
-              const back = mt.mercs2Viewpoint(mercs, SIZE_SMALL, 0);
+              const mercs = vp2MercsWith(field, target, vp, SIZE_SMALL);
+              const back = mercs2VpWith(field, target, mercs, SIZE_SMALL);
               const backXy = sysCoord2Xy(back.center, target.maxxy);
               maxC = Math.max(maxC, Math.hypot(backXy[0] - c[0], backXy[1] - c[1]));
               maxZ = Math.max(maxZ, Math.abs(back.zoom - zoom));
