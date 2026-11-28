@@ -6,17 +6,20 @@ import {
   MapTransform,
   createProj4ProjectionEngine,
   mercs2MercViewpoint,
+  worldFileToCrs,
   wrapAngle,
   xy2SysCoord
 } from "../src/index.ts";
 import { createLayerSurface } from "../src/index.ts";
-import type { MapData, PointSet, TinSurfaceData, Viewpoint, WorldFileSurfaceData } from "../src/index.ts";
+import type { MapData, PointSet, TinSurfaceData, Viewpoint, WorldFile, WorldFileSurfaceData } from "../src/index.ts";
 import {
   deviationStats,
   interpolateGrid,
   judgeViewpointMode,
   collectGInSamples,
-  meanCoefficients
+  meanCoefficients,
+  ViewpointField,
+  paperRectOf
 } from "../src/viewpoint-field.ts";
 import type { CoefficientGrid, ViewpointSample } from "../src/viewpoint-field.ts";
 import { recommendViewpointMode } from "../src/recommend-viewpoint.ts";
@@ -417,5 +420,107 @@ describe("probeViewpointCoefficients（既定ズーム用・格子を作らな�
     for (const bad of [-1, mt.layerCount, 1.5, NaN]) {
       expect(() => mt.probeViewpointCoefficients(bad, [763, 1024], 150)).toThrow(/invalid layerIndex/);
     }
+  });
+});
+
+// ─── 既知の相似の係数固定値（紙側格子 loose・地理側格子、M-3(b))─────────────────
+//
+// θ の符号を逆にしたら落ちる: 45° Plan A の期待 θ は +π/4 なので、θ の符号反転の
+// 回帰では wrapAngle 差が π/2 となり 1e-9 判定を通過できない。紙側格子・地理側格子・
+// 前進・逆方向のすべてを同じ符号で固定する。
+
+describe("既知の相似の係数固定値（getViewpointCoefficients・紙側格子と地理側格子）", () => {
+  const expectCoef = (
+    coef: { s: number; theta: number },
+    s: number,
+    theta: number,
+    label: string
+  ): void => {
+    expect(Math.abs(coef.s - s), `${label}: s`).toBeLessThanOrEqual(1e-9);
+    expect(Math.abs(wrapAngle(coef.theta - theta)), `${label}: theta`).toBeLessThanOrEqual(1e-9);
+  };
+
+  /** 45° Plan A（s = S0 = 2・θ = PHI0 = π/4 の一様相似）の層データ */
+  const planA45 = (): WorldFileSurfaceData => ({
+    kind: "worldFile",
+    crs: { epsg: 3857 },
+    worldFile: {
+      xScale: S0 * Math.cos(PHI0),
+      xSkew: S0 * Math.sin(PHI0),
+      xOrigin: 15000000,
+      ySkew: S0 * Math.sin(PHI0),
+      yScale: -S0 * Math.cos(PHI0),
+      yOrigin: 4000000
+    },
+    wh: [1526, 2048],
+    projectionEngine
+  });
+
+  /** B（outerTransform: "worldFile"＋strict）を yaxisMode "follow" にしたもの（AT-6③①と同じ） */
+  function buildFollowBData(): MapData["compiled"] {
+    const compiled = structuredClone(loadCompiled("fushimijo_maplat", "v3")) as MapData["compiled"] & {
+      outerTransform: string;
+      worldFile: WorldFile;
+      centroid_point: number[][];
+      yaxisMode?: string;
+      strict_status?: string;
+    };
+    const worldFile = { xScale: 2, xSkew: 0, xOrigin: 15000000.5, ySkew: 0, yScale: -2, yOrigin: 4000000.5 };
+    const toMerc = (xy: number[]) => worldFileToCrs(worldFile, xy);
+    const toInternal = (xy: number[]): number[] => [xy[0], -xy[1]];
+    compiled.outerTransform = "worldFile";
+    compiled.worldFile = worldFile;
+    compiled.points = compiled.points.map(([xy]) => [xy, toInternal(toMerc(xy))]);
+    compiled.vertices_points = compiled.vertices_points.map(([xy]) => [xy, toInternal(toMerc(xy))]);
+    compiled.centroid_point = [compiled.centroid_point[0], toInternal(toMerc(compiled.centroid_point[0]))];
+    compiled.yaxisMode = "follow";
+    return compiled;
+  }
+
+  it("45° Plan A: 紙側格子（loose として作ったもの）と地理側格子の両方で (2, π/4)", () => {
+    const surface = createLayerSurface(planA45());
+    const rect = paperRectOf(surface);
+    const paperField = ViewpointField.build({
+      surface,
+      mode: "grid",
+      strictness: "loose",
+      paperRect: rect
+    });
+    const mercField = ViewpointField.build({
+      surface,
+      mode: "grid",
+      strictness: "strict",
+      paperRect: rect
+    });
+    const p = [763, 1024];
+    const m = surface.transform(p, false, true);
+    if (!Array.isArray(m)) throw new Error("変換に失敗しました");
+    expectCoef(paperField.eval(p, m, false), S0, PHI0, "Plan A 紙側格子");
+    expectCoef(mercField.eval(p, m, false), S0, PHI0, "Plan A 地理側格子 forward");
+    expectCoef(mercField.eval(p, m, true), S0, PHI0, "Plan A 地理側格子 backward");
+    const mt = new MapTransform();
+    mt.setLayeredMapData({ main: planA45() });
+    expectCoef(mt.getViewpointCoefficients(0, p, "xy2Merc"), S0, PHI0, "Plan A xy2Merc");
+    expectCoef(mt.getViewpointCoefficients(0, m, "merc2Xy"), S0, PHI0, "Plan A merc2Xy");
+  });
+
+  it('yaxisMode "follow" の B: 紙側格子（loose）と地理側格子の両方で (2, 0)', () => {
+    const compiled = buildFollowBData();
+    compiled.strict_status = "loose";
+    const mt = new MapTransform();
+    mt.setMapData({ compiled, maxZoom: 3 });
+    const surface = mt.getSurfaceTransform(0)!;
+    const p = [763, 1024];
+    const m = surface.transform(p, false, true);
+    if (!Array.isArray(m)) throw new Error("変換に失敗しました");
+    // strict_status "loose" なので "xy2Merc" は紙側格子、"merc2Xy" は地理側格子を引く
+    expectCoef(mt.getViewpointCoefficients(0, p, "xy2Merc"), 2, 0, "follow B 紙側格子");
+    expectCoef(mt.getViewpointCoefficients(0, m, "merc2Xy"), 2, 0, "follow B 地理側格子");
+    // strict（地理側格子のみ）としても同じ値
+    const strictCompiled = buildFollowBData();
+    const strictMt = new MapTransform();
+    strictMt.setMapData({ compiled: strictCompiled, maxZoom: 3 });
+    expectCoef(strictMt.getViewpointCoefficients(0, p, "xy2Merc"), 2, 0, "follow B strict xy2Merc");
+    expectCoef(strictMt.getViewpointCoefficients(0, m, "merc2Xy"), 2, 0, "follow B strict merc2Xy");
   });
 });

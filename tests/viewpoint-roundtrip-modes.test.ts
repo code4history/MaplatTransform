@@ -11,6 +11,7 @@ import {
   sysCoord2Xy
 } from "../src/index.ts";
 import type { MapData, Viewpoint, WorldFile, WorldFileSurfaceData } from "../src/index.ts";
+import { probeCoefficients } from "../src/viewpoint-field.ts";
 
 // ─── ヘルパー ─────────────────────────────────────────────────────────────────
 
@@ -168,6 +169,51 @@ describe("AT-6② layerIndex 指定の同サイズ往復（sub_maps 重なり域
         expectRoundTrip(mt, probe, 0, [12], [0, Math.PI - 0.01], SIZE);
       }
       expect(label).toMatch(/^[BC]$/);
+    }
+  });
+
+  it("B の内側 GCP を world file のアフィンから滑らかにずらしても外周の内外で厳密に往復する", () => {
+    // 内側の GCP だけ merc[0] += 20·sin(y/200) で滑らかにずらす（外周輪・world file はアフィンのまま）
+    const compiled = buildBFixture();
+    compiled.points = compiled.points.map(([xy, merc]) => [
+      xy,
+      [merc[0] + 20 * Math.sin(xy[1] / 200), merc[1]]
+    ]);
+    compiled.centroid_point = [
+      compiled.centroid_point[0],
+      [
+        compiled.centroid_point[1][0] +
+          20 * Math.sin((compiled.centroid_point[0] as number[])[1] / 200),
+        compiled.centroid_point[1][1]
+      ]
+    ];
+    const mt = new MapTransform();
+    mt.setMapData({ compiled, maxZoom: 3 });
+    const surface = mt.getSurfaceTransform(0)!;
+    // 折り返し（det ≤ 0）が無いこと: 紙面の標本点で 4 点プローブが有効に返る
+    for (let y = 100; y <= 1900; y += 200) {
+      for (let x = 100; x <= 1400; x += 200) {
+        expect(probeCoefficients(surface, [x, y], 1, false), `(${x}, ${y})`).not.toBeNull();
+      }
+    }
+    const ring = compiled.vertices_points.map(p => p[0] as number[]);
+    const centroid = ring.reduce((sum, xy) => [sum[0] + xy[0] / ring.length, sum[1] + xy[1] / ring.length], [0, 0]);
+    const probes: number[][] = [];
+    for (const vertex of ring) probes.push(vertex);
+    for (let i = 0; i < ring.length; i++) {
+      const a = ring[i];
+      const b = ring[(i + 1) % ring.length];
+      const mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+      const outward = [mid[0] - centroid[0], mid[1] - centroid[1]];
+      const len = Math.hypot(outward[0], outward[1]) || 1;
+      // 外周の内外の両側を測る（負は内側）
+      for (const offset of [-200, -50, -10, 10, 50, 200]) {
+        probes.push([mid[0] + (outward[0] / len) * offset, mid[1] + (outward[1] / len) * offset]);
+      }
+    }
+    probes.push([763, 1024]);
+    for (const probe of probes) {
+      expectRoundTrip(mt, probe, 0, [12], [0, Math.PI - 0.01], SIZE);
     }
   });
 
@@ -445,5 +491,75 @@ describe("AT-6③ yaxisMode follow と回転付き非 3857 の符号", () => {
     for (const centerXy of [[763, 1024], [300, 400]]) {
       expectRoundTrip(mt, centerXy, undefined, [12, 17], [0, 1.2, Math.PI - 0.01], SIZE);
     }
+  });
+});
+
+// ─── ViewpointField のキャッシュと遅延構築（M-3(c))───────────────────────────
+
+describe("ViewpointField のキャッシュと遅延構築", () => {
+  const fieldsOf = (mt: MapTransform): unknown[] =>
+    (mt as unknown as { _fields: unknown[] })._fields;
+
+  it("読み込み直後には格子が作られていない（遅延構築）", () => {
+    const mt = new MapTransform();
+    mt.setMapData({ compiled: loadCompiled("18th_mapcontest_gp", "v3"), maxZoom: 5 });
+    expect(fieldsOf(mt).filter(Boolean)).toHaveLength(0);
+    const layered = new MapTransform();
+    layered.setLayeredMapData({ main: planAData({ epsg: 3857 }, 2, 0, [15000000, 4000000]) });
+    expect(fieldsOf(layered).filter(Boolean)).toHaveLength(0);
+  });
+
+  it("setMapData / setLayeredMapData のやり直しで格子が捨てられ、次に作り直される", () => {
+    const compiled = loadCompiled("18th_mapcontest_gp", "v3");
+    const mt = new MapTransform();
+    mt.setMapData({ compiled, maxZoom: 5 });
+    mt.getViewpointCoefficients(0, [2000, 2000], "xy2Merc");
+    expect(fieldsOf(mt).filter(Boolean)).toHaveLength(1);
+    mt.setMapData({ compiled, maxZoom: 5 });
+    expect(fieldsOf(mt).filter(Boolean)).toHaveLength(0);
+    mt.getViewpointCoefficients(0, [2000, 2000], "xy2Merc");
+    expect(fieldsOf(mt).filter(Boolean)).toHaveLength(1);
+    mt.setLayeredMapData({ main: planAData({ epsg: 3857 }, 2, 0, [15000000, 4000000]) });
+    expect(fieldsOf(mt).filter(Boolean)).toHaveLength(0);
+  });
+
+  it("副層の constant は層ごとに別の s0 を持つ", () => {
+    const mt = new MapTransform();
+    mt.setMapData({
+      compiled: fxSyn.main,
+      maxZoom: 3,
+      viewpointMode: "constant",
+      sub_maps: [
+        { compiled: fxSyn.sub.wide_station, priority: 2, importance: 1 },
+        { compiled: fxSyn.sub.wide_area, priority: 1, importance: -1 },
+        { compiled: fxSyn.sub.castle_a, priority: 3, importance: 1 },
+        { compiled: fxSyn.sub.temple_b, priority: 4, importance: 2 }
+      ]
+    });
+    const mainSurface = mt.getSurfaceTransform(0)!;
+    const sharedMerc = must(mainSurface.transform([700, 900], false, true));
+    const sMain = mt.getViewpointCoefficients(0, [700, 900], "xy2Merc");
+    const sMain2 = mt.getViewpointCoefficients(0, [800, 1000], "xy2Merc");
+    // 同じ層ではどの点でも一定（constant の s0・θ0）
+    expect(sMain2.s).toBe(sMain.s);
+    expect(sMain2.theta).toBe(sMain.theta);
+    const stationSurface = mt.getSurfaceTransform(1)!;
+    const stationXy = must(stationSurface.transform(sharedMerc, true, true));
+    const sStation = mt.getViewpointCoefficients(1, stationXy, "xy2Merc");
+    // 層ごとに s0 が違う（本図と駅前拡大図 k=1/8 で 8 倍）
+    expect(Math.abs(sMain.s / sStation.s)).toBeGreaterThanOrEqual(5);
+  });
+
+  it("strict_error＋constant: 前進は定数を使い、逆方向は例外のまま", () => {
+    const mt = singleLayerMt(loadCompiled("naramachi_yasui_bunko", "v2"), "constant");
+    const c1 = mt.getViewpointCoefficients(0, [7000, 8000], "xy2Merc");
+    const c2 = mt.getViewpointCoefficients(0, [7200, 8200], "xy2Merc");
+    expect(c2.s).toBe(c1.s);
+    expect(c2.theta).toBe(c1.theta);
+    const vp: Viewpoint = { center: xy2SysCoord([7000, 8000], mt.maxxy), zoom: 12, rotation: 0 };
+    const mercs = mt.viewpoint2Mercs(vp, SIZE);
+    expect(mercs).toHaveLength(5);
+    expect(() => mt.mercs2Viewpoint(mercs, SIZE)).toThrow(/strict_error/);
+    expect(() => mt.getViewpointCoefficients(0, mercs[0], "merc2Xy")).toThrow(/strict_error/);
   });
 });
