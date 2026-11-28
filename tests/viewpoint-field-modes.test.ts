@@ -377,3 +377,45 @@ describe("AT-7 モード 1 算出・判定基準の境界", () => {
     }
   });
 });
+
+// ─── probeViewpointCoefficients: Core の既定ズーム用の単発プローブ（M-1）────────
+
+describe("probeViewpointCoefficients（既定ズーム用・格子を作らない）", () => {
+  /** 45° Plan A（s0 = S0・θ0 = PHI0 の一様相似） */
+  const planA45Data = (): WorldFileSurfaceData => ({
+    kind: "worldFile",
+    crs: { epsg: 3857 },
+    worldFile: {
+      xScale: S0 * Math.cos(PHI0),
+      xSkew: S0 * Math.sin(PHI0),
+      xOrigin: 15000000,
+      ySkew: S0 * Math.sin(PHI0),
+      yScale: -S0 * Math.cos(PHI0),
+      yOrigin: 4000000
+    },
+    wh: [1526, 2048],
+    projectionEngine
+  });
+
+  it("45° Plan A で既知の (s, θ) を返し、視点グリッドは作られない", () => {
+    const mt = new MapTransform();
+    mt.setLayeredMapData({ main: planA45Data() });
+    const fields = (): unknown[] => (mt as unknown as { _fields: unknown[] })._fields;
+    expect(fields().filter(Boolean)).toHaveLength(0);
+    for (const xy of [[763, 1024], [200, 300], [1400, 1900]] as [number, number][]) {
+      const coef = mt.probeViewpointCoefficients(0, xy, 150);
+      expect(Math.abs(coef.s - S0), `s at ${xy}`).toBeLessThanOrEqual(1e-9);
+      expect(Math.abs(wrapAngle(coef.theta - PHI0)), `theta at ${xy}`).toBeLessThanOrEqual(1e-9);
+    }
+    // 単発プローブのあとも視点グリッド（ViewpointField）は作られていない
+    expect(fields().filter(Boolean)).toHaveLength(0);
+  });
+
+  it("layerIndex の検査は viewpoint2Mercs と同じ（範囲外番号・非整数は例外）", () => {
+    const mt = new MapTransform();
+    mt.setLayeredMapData({ main: planA45Data() });
+    for (const bad of [-1, mt.layerCount, 1.5, NaN]) {
+      expect(() => mt.probeViewpointCoefficients(bad, [763, 1024], 150)).toThrow(/invalid layerIndex/);
+    }
+  });
+});

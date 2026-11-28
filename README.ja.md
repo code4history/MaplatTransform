@@ -96,6 +96,10 @@ const restored = transform.transform(transformed, true);
   範囲外の番号・非整数は例外になります。
 - `getViewpointCoefficients(layerIndex, coord, direction?)` は層を 1 つ指定して
   中心 1 点の `{ s, theta }` を返します（`"xy2Merc"` は紙座標、`"merc2Xy"` はメルカトル座標）。
+- `probeViewpointCoefficients(layerIndex, xy, radiusPx)` は Core の既定ズーム
+  （mercZoom が無い地図）のための口です。モード 2 では格子を作らずに紙の中心で測ります:
+  その層の面で紙の xy の十字 4 点（半径 radiusPx、ignoreBounds = true）を測り、
+  格子を作らずに `{ s, theta }` を返します。
 - `recommendViewpointMode(layerSurfaceData, { projectionEngine?, gcps? })` は
   `{ recommended, maxRotationDiffDeg, p95RotationDiffDeg, maxScaleRatioDiff,
   p95ScaleRatioDiff, sampleCount }` を返し、GCP 凸包の内側（GCP が無いときは層の範囲）の

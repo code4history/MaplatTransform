@@ -9,7 +9,7 @@ import {
 } from "./projection.ts";
 import { deriveStrictStatus } from "./compiled-state.ts";
 import {
-  ViewpointField, classifyStrictness, paperRectOf
+  ViewpointField, classifyStrictness, paperRectOf, probeCoefficients
 } from "./viewpoint-field.ts";
 import type { LayerStrictness } from "./viewpoint-field.ts";
 import { MERC_MAX } from "./constants.ts";
@@ -615,6 +615,34 @@ export class MapTransform {
     const c_xy = surface.transform(coord, true, true);
     if (!c_xy) throw new Error("getViewpointCoefficients: transform failed");
     return this._evalViewpointCoefficients(layerIndex, c_xy, coord, true);
+  }
+
+  /**
+   * Core の既定ズーム（mercZoom が無い地図）のための口（§7.2 OQ-3）。
+   * モード 2 では格子を作らずに紙の中心で測る: その層の面で紙の xy の十字 4 点
+   * （半径 radiusPx、ignoreBounds = true）を測り、§1.2 の式で (s, theta) を返すだけ。
+   * 視点グリッド（ViewpointField）は作らない（既存の probeCoefficients を使う）。
+   *
+   * @param layerIndex - 0 = 本図、1 以上 = sub_maps[layerIndex - 1]。範囲外番号・非整数は例外
+   * @param xy - 紙座標（十字 4 点の中心）
+   * @param radiusPx - 十字 4 点の半径（紙の画素単位。Core の既定値は 150）
+   * @returns 視点係数（s: 縮尺比 [3857 単位 / 地図画素]、theta: 局所回転角 [rad]）
+   */
+  probeViewpointCoefficients(
+    layerIndex: number,
+    xy: [number, number],
+    radiusPx: number
+  ): { s: number; theta: number } {
+    this._assertMapData();
+    this._assertLayerIndex(layerIndex, "probeViewpointCoefficients");
+    const surface = this.getSurfaceTransform(layerIndex)!;
+    const coef = probeCoefficients(surface, xy, radiusPx, false);
+    if (!coef) {
+      throw new Error(
+        `probeViewpointCoefficients: layer ${layerIndex} probe failed at [${xy[0]}, ${xy[1]}]`
+      );
+    }
+    return coef;
   }
 
   // ─── ユーティリティ（静的メソッド）────────────────────────────────────────

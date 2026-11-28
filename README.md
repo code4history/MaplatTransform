@@ -103,6 +103,11 @@ leg overflow.
 - `getViewpointCoefficients(layerIndex, coord, direction?)` returns the `{ s, theta }`
   of one layer at one point (`"xy2Merc"` for paper coordinates, `"merc2Xy"` for
   mercator coordinates).
+- `probeViewpointCoefficients(layerIndex, xy, radiusPx)` is the entry point for
+  Core's default zoom (maps without `mercZoom`). In mode 2 it measures at the
+  paper center without building a grid: it probes the paper-side cross of four
+  points (radius `radiusPx`, `ignoreBounds = true`) on the layer's surface and
+  returns `{ s, theta }` directly.
 - `recommendViewpointMode(layerSurfaceData, { projectionEngine?, gcps? })` returns
   `{ recommended, maxRotationDiffDeg, p95RotationDiffDeg, maxScaleRatioDiff,
   p95ScaleRatioDiff, sampleCount }` and recommends `"constant"` when the GCP hull
