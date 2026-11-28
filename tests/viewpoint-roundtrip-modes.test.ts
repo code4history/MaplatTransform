@@ -580,3 +580,53 @@ describe("ViewpointField のキャッシュと遅延構築", () => {
     expect(() => mt.getViewpointCoefficients(0, mercs[0], "merc2Xy")).toThrow(/strict_error/);
   });
 });
+
+// ─── 退化した角度表（外挿不可）でのプローブ例外の扱い ─────────────────────────
+//
+// 角度表が退化した compiled（vertices_params が全て同値）では三角網の外の外挿が
+// 効かず、余白のプローブの surface.transform は「Unable to determine vertex
+// index」の例外になる。プローブの例外は失敗のプローブ（null・無効）として
+// §1.2 3. のフォールバックで扱うが、視点の中心そのものの変換失敗は例外のまま
+// （呼び出し元が try/catch で扱う前提）とする。
+
+describe("角度表退化（外挿不可）時のプローブ例外の扱い", () => {
+  /** 角度表を [[0,0,0,0],[0,0,0,0]] に退化させた compiled（三角網の外では変換が例外になる） */
+  function buildDegenerateFixture(): MapData["compiled"] {
+    const compiled = structuredClone(loadCompiled("fushimijo_maplat", "v2"));
+    compiled.vertices_params = [[0, 0, 0, 0], [0, 0, 0, 0]];
+    return compiled;
+  }
+
+  it("凸包の内側の視点の viewpoint2Mercs → mercs2Viewpoint は例外にならず有限の値を返す", () => {
+    const mt = singleLayerMt(buildDegenerateFixture());
+    for (const centerXy of [[763, 1024], [600, 900], [900, 1100]]) {
+      const vp: Viewpoint = { center: xy2SysCoord(centerXy, mt.maxxy), zoom: 12, rotation: 0 };
+      const mercs = mt.viewpoint2Mercs(vp, SIZE);
+      const back = mt.mercs2Viewpoint(mercs, SIZE);
+      const backXy = sysCoord2Xy(back.center, mt.maxxy);
+      for (const [label, value] of [
+        ["center x", backXy[0]],
+        ["center y", backXy[1]],
+        ["zoom", back.zoom],
+        ["rotation", back.rotation]
+      ] as [string, number][]) {
+        expect(Number.isFinite(value), `${label} (${centerXy}) が有限ではない`).toBe(true);
+      }
+    }
+  });
+
+  it("凸包の内側の視点では同サイズ往復も成立する", () => {
+    const mt = singleLayerMt(buildDegenerateFixture());
+    for (const centerXy of [[763, 1024], [600, 900]]) {
+      expectRoundTrip(mt, centerXy, undefined, [12], [0, Math.PI - 0.01], SIZE);
+    }
+  });
+
+  it("範囲の外で中心が変換できない視点では従来どおり例外になる", () => {
+    const mt = singleLayerMt(buildDegenerateFixture());
+    // 外周の補助頂点扇形の外（紙の外）は中心の変換そのものが失敗する。
+    // この例外は呼び出し元が try/catch で扱う前提で、そのまま外へ出す
+    const vp: Viewpoint = { center: xy2SysCoord([-200, -200], mt.maxxy), zoom: 12, rotation: 0 };
+    expect(() => mt.viewpoint2Mercs(vp, SIZE)).toThrow(/Unable to determine vertex index/);
+  });
+});

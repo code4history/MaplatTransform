@@ -103,6 +103,27 @@ function finite2(coord: number[] | false | undefined): coord is number[] {
   return Array.isArray(coord) && coord.length >= 2 && Number.isFinite(coord[0]) && Number.isFinite(coord[1]);
 }
 
+/**
+ * プローブ用の surface.transform。変換の例外（外挿が効かない角度表の退化などで
+ * 三角網の外で投げられる Unable to determine vertex index など）は失敗のプローブ
+ * （null）として扱う（§1.2 3.）。視点の中心そのものの変換失敗は例外のまま扱う
+ * 呼び出し元（map-transform.ts の viewpoint2Mercs / mercs2Viewpoint 等）があるため、
+ * ここではプローブ・標本の呼び出しにだけ使う。
+ */
+function tryTransform(
+  surface: SurfaceLike,
+  input: number[],
+  backward: boolean,
+  ignoreBounds = true
+): number[] | null {
+  try {
+    const out = surface.transform(input, backward, ignoreBounds);
+    return finite2(out) ? out : null;
+  } catch {
+    return null;
+  }
+}
+
 function bboxOf(positions: number[][]): PaperRect {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const [x, y] of positions) {
@@ -193,8 +214,8 @@ function collectProbes(
   const valid: { d: [number, number]; out: number[] }[] = [];
   for (const d of offsets) {
     const input = yFlip ? [p0[0] + d[0], p0[1] - d[1]] : [p0[0] + d[0], p0[1] + d[1]];
-    const out = surface.transform(input, backward, true);
-    if (finite2(out)) valid.push({ d, out });
+    const out = tryTransform(surface, input, backward, true);
+    if (out) valid.push({ d, out });
   }
   return valid;
 }
@@ -252,7 +273,7 @@ function invertCoefficients(coef: ViewpointCoefficients | null): ViewpointCoeffi
 
 /**
  * 1 格子点の係数を 4 点プローブで求める（§1.2）。
- * 全プローブ失敗・境界外れ・det ≤ 0 のときは null（無効印）。
+ * 全プローブ失敗・境界外れ・変換の例外（失敗のプローブ）・det ≤ 0 のときは null（無効印）。
  * @internal（実測用。§2.2 4. の局所値の基準にも使う。公開 API ではない）
  */
 export function probeCoefficients(
@@ -276,9 +297,9 @@ export function probeCoefficients(
     );
     return backward ? invertCoefficients(jac) : jac;
   }
-  // 4 点がそろわないときだけ中心を変換する（§1.2 3.）
-  const centerOut = surface.transform(p0, backward, true);
-  const centerUp = finite2(centerOut) ? toYUp(centerOut, backward) : null;
+  // 4 点がそろわないときだけ中心を変換する（§1.2 3.）。中心が失敗したノードは無効印
+  const centerOut = tryTransform(surface, p0, backward, true);
+  const centerUp = centerOut ? toYUp(centerOut, backward) : null;
   if (!centerUp) return null;
   const isX = (d: [number, number]): boolean => d[1] === 0;
   const xProbes = valid.filter(p => isX(p.d));
@@ -424,8 +445,8 @@ function mercRectOf(surface: SurfaceLike, rect: PaperRect): PaperRect {
   }
   const outputs: number[][] = [];
   for (const xy of samples) {
-    const out = surface.transform(xy, false, true);
-    if (finite2(out)) outputs.push(out);
+    const out = tryTransform(surface, xy, false, true);
+    if (out) outputs.push(out);
   }
   if (!outputs.length) {
     throw new Error("視点グリッドの地理側範囲を決められません（有効な標本点がありません）");
@@ -484,8 +505,8 @@ function evaluateAt(built: BuiltLayer, input: ViewpointFieldInput, paperPos: num
   if (input.strictness === "loose" || input.strictness === "strict_error") {
     return built.paper ? interpolateGrid(built.paper, paperPos[0], paperPos[1]) : null;
   }
-  const out = input.surface.transform(paperPos, false, true);
-  if (!finite2(out) || !built.merc) return null;
+  const out = tryTransform(input.surface, paperPos, false, true);
+  if (!out || !built.merc) return null;
   return interpolateGrid(built.merc, out[0], out[1]);
 }
 
@@ -501,8 +522,8 @@ function collectInnerSamples(input: ViewpointFieldInput, built: BuiltLayer): Raw
         if (built.paper) samples.push({ paper: paperPos, ...nodeValue(built.paper, pi, pj) });
         continue;
       }
-      const out = input.surface.transform(paperPos, false, true);
-      if (!finite2(out) || !built.merc) continue;
+      const out = tryTransform(input.surface, paperPos, false, true);
+      if (!out || !built.merc) continue;
       const coef = interpolateGrid(built.merc, out[0], out[1]);
       if (coef.s > 0 && Number.isFinite(coef.s) && Number.isFinite(coef.theta)) {
         samples.push({ paper: paperPos, s: coef.s, theta: coef.theta });
