@@ -39,6 +39,7 @@ export {
 } from "./viewpoint.ts";
 export { xy2SysCoord, sysCoord2Xy } from "./coord-utils.ts";
 export { MapTransform } from "./map-transform.ts";
+export { recommendViewpointMode } from "./recommend-viewpoint.ts";
 export type {
   Viewpoint,
   SubMapData,
@@ -50,5 +51,9 @@ export type {
   TinSurfaceData,
   WorldFileSurfaceData,
   LayerSurfaceData,
-  LayeredMapData
+  LayeredMapData,
+  ViewpointMode,
+  ViewpointCoefficients,
+  RecommendViewpointModeResult,
+  RecommendViewpointModeOptions
 } from "./types.ts";

@@ -81,6 +81,49 @@ const restored = transform.transform(transformed, true);
 サブマップ選択・ビューポート変換・地図間ビューポート同期については
 [Wiki Tutorials](https://github.com/code4history/MaplatTransform/wiki/Tutorials) を参照してください。
 
+### 視点の変換モード（ラウンドトリップ対応の視点変換）
+
+`viewpoint2Mercs(viewpoint, size, layerIndex?)` と `mercs2Viewpoint(mercs, size, layerIndex?)` は
+5 点 `mercs` 中継の契約を保ったまま理想相似をエンコードします。周囲 4 点は層ごとの
+`ViewpointField`（局所縮尺 `s`・回転 `theta`）からだけ決まるため、strict な地図では
+任意のズーム・画面サイズで厳密に往復し、足の先端のはみ出しで例外になりません。
+
+- `viewpointMode: "constant" | "grid"`（`MapData` / `LayeredMapData` 最上位。省略時は `"grid"`）で、
+  層ごとの固定値 `(s0, theta0)` と、遅延構築される格子の滑らかな補間を切り替えます。
+  格子は最初の視点変換のときに層単位で構築し、読み込み時には作りません。
+- 省略可能な `layerIndex` で層を固定できます（0 = 本図、1 以上 = `sub_maps`）。
+  省略時は従来の層選択のままで、係数は中心の層の格子からだけ引きます。
+  範囲外の番号・非整数は例外になります。
+- `getViewpointCoefficients(layerIndex, coord, direction?)` は層を 1 つ指定して
+  中心 1 点の `{ s, theta }` を返します（`"xy2Merc"` は紙座標、`"merc2Xy"` はメルカトル座標）。
+- `probeViewpointCoefficients(layerIndex, xy, radiusPx)` は Core の既定ズーム
+  （mercZoom が無い地図）のための口です。モード 2 では格子を作らずに紙の中心で測ります:
+  その層の面で紙の xy の十字 4 点（半径 radiusPx、ignoreBounds = true）を測り、
+  格子を作らずに `{ s, theta }` を返します。
+- `recommendViewpointMode(layerSurfaceData, { projectionEngine?, gcps? })` は
+  `{ recommended, maxRotationDiffDeg, p95RotationDiffDeg, maxScaleRatioDiff,
+  p95ScaleRatioDiff, sampleCount }` を返し、GCP 凸包の内側（GCP が無いときは層の範囲）の
+  変動が判定基準（統計量は最大値でなく p95。p95 回転偏差 1.0° 以内かつ p95 縮尺比偏差 3% 以内）
+  以内なら `"constant"` を推奨します。
+- 副層が重なる地図で厳密に往復するには `layerIndex` の指定が要ります。
+  省略すると従来の層選択で行きと帰りに別の層が選ばれ、係数を別の格子から引くことがあります。
+- 厳密さは層ごとの別です。`strict`（既定）は地理側の格子 1 面で厳密に往復し、
+  `loose` は紙側と地理側の 2 面を持ち厳密な往復の対象外、`strict_error` は
+  従来どおり逆方向が例外になります。
+- 格子の範囲の外では端の値に張り付くため、範囲外の中心でも例外にならず有限かつ連続に留まります。
+- 格子は層の矩形の長辺を 16 分割し、各辺に 2 セルの余白を付けます
+  （短辺はアスペクト比に比例し、8〜16 分割に収めます）。
+
+```typescript
+import { MapTransform, recommendViewpointMode } from '@maplat/transform';
+
+const map = new MapTransform();
+map.setLayeredMapData({ main: surfaceData, viewpointMode: 'grid' });
+const mercs = map.viewpoint2Mercs(viewpoint, [800, 600], 0); // 層 0 を固定
+const back = map.mercs2Viewpoint(mercs, [800, 600], 0);
+const { recommended } = recommendViewpointMode(surfaceData, { gcps });
+```
+
 ### World file 面
 
 `MapTransform.setLayeredMapData()` は、メイン地図または副地図として world file 面を受け取ります。world file は名前付き6係数を使い、`xOrigin`・`yOrigin` は左上画素の中心を指します。画素座標の原点は画像の角なので、アフィン変換の前に各座標から半画素を引きます。

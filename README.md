@@ -84,6 +84,59 @@ For sub-map selection, viewport transformation, and cross-map viewport
 synchronization, see the
 [Wiki Tutorials](https://github.com/code4history/MaplatTransform/wiki/Tutorials).
 
+### Viewpoint modes (round-trip viewport conversion)
+
+`viewpoint2Mercs(viewpoint, size, layerIndex?)` and
+`mercs2Viewpoint(mercs, size, layerIndex?)` keep the five-point `mercs` relay
+contract but encode an ideal similarity: the surrounding four points are derived
+from a per-layer `ViewpointField` of local scale `s` and rotation `theta`, so any
+zoom and window size round-trips exactly on strict maps and never throws on
+leg overflow.
+
+- `viewpointMode: "constant" | "grid"` (map-wide, on `MapData` / `LayeredMapData`;
+  omitted means `"grid"`) selects between one fixed `(s0, theta0)` per layer and a
+  lazily built grid of per-node coefficients with smooth interpolation. Grids are
+  built on first viewpoint conversion, never at load time.
+- The optional `layerIndex` pins the layer (0 = main, 1+ = `sub_maps`). Without it,
+  the existing layer-selection rules apply and coefficients come only from the
+  center layer's grid. Out-of-range or non-integer indexes throw.
+- `getViewpointCoefficients(layerIndex, coord, direction?)` returns the `{ s, theta }`
+  of one layer at one point (`"xy2Merc"` for paper coordinates, `"merc2Xy"` for
+  mercator coordinates).
+- `probeViewpointCoefficients(layerIndex, xy, radiusPx)` is the entry point for
+  Core's default zoom (maps without `mercZoom`). In mode 2 it measures at the
+  paper center without building a grid: it probes the paper-side cross of four
+  points (radius `radiusPx`, `ignoreBounds = true`) on the layer's surface and
+  returns `{ s, theta }` directly.
+- `recommendViewpointMode(layerSurfaceData, { projectionEngine?, gcps? })` returns
+  `{ recommended, maxRotationDiffDeg, p95RotationDiffDeg, maxScaleRatioDiff,
+  p95ScaleRatioDiff, sampleCount }` and recommends `"constant"` when the GCP hull
+  interior (or, without GCPs, the layer extent) varies within the judgment
+  criteria (p95 rotation deviation ≤ 1.0° and p95 scale ratio deviation ≤ 3%;
+  judged on the p95 statistic rather than the maximum).
+- On maps whose sub-maps overlap, pinning `layerIndex` is required for an exact
+  round-trip. Without it the existing layer-selection rules can pick different
+  layers for the two directions, and the coefficients come from different grids.
+- Strictness is decided per layer: `strict` (the default) round-trips exactly
+  from one geographic-side grid; `loose` keeps two grids (paper-side and
+  geographic-side) and is outside the exact round-trip guarantee; `strict_error`
+  still throws when the backward direction is used.
+- Outside the grid the coefficients clamp to the edge values, so a center
+  outside the map stays finite and continuous instead of throwing.
+- The grid divides the long side of the layer rectangle into 16 segments and
+  adds a 2-cell margin on every side (the short side is proportional to the
+  aspect ratio, clamped between 8 and 16 segments).
+
+```typescript
+import { MapTransform, recommendViewpointMode } from '@maplat/transform';
+
+const map = new MapTransform();
+map.setLayeredMapData({ main: surfaceData, viewpointMode: 'grid' });
+const mercs = map.viewpoint2Mercs(viewpoint, [800, 600], 0); // pin layer 0
+const back = map.mercs2Viewpoint(mercs, [800, 600], 0);
+const { recommended } = recommendViewpointMode(surfaceData, { gcps });
+```
+
 ### World-file surfaces
 
 `MapTransform.setLayeredMapData()` accepts a world-file surface as the main map or a sub-map. A world file uses the standard six named coefficients; `xOrigin` and `yOrigin` refer to the center of the upper-left pixel. Pixel coordinates use the image corner as the origin, so the conversion subtracts one half pixel before applying the affine coefficients.

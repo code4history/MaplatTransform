@@ -152,10 +152,17 @@ export type WorldFileSurfaceData = WorldFileSurfaceDimensions & {
 
 export type LayerSurfaceData = TinSurfaceData | WorldFileSurfaceData;
 
+/**
+ * 視点変換モード（地図全体＝本図＋全副層で共通の 1 組、設計書 §3.2）。
+ * 未指定（省略）は "grid"（モード 2）として動作する。
+ */
+export type ViewpointMode = "constant" | "grid";
+
 export interface LayeredMapData {
   main: LayerSurfaceData;
   sub_maps?: LayerSurfaceData[];
   maxZoom?: number;
+  viewpointMode?: ViewpointMode;
 }
 
 /**
@@ -241,4 +248,36 @@ export interface MapData {
   maxZoom?: number;
   /** Sub-map layers */
   sub_maps?: SubMapData[];
+  /** 視点変換モード（地図全体で共通。省略時は "grid"） */
+  viewpointMode?: ViewpointMode;
+}
+
+/** 視点係数（局所相似）。s は [EPSG:3857 単位 / 地図画素]、theta は地図の局所回転角（ラジアン） */
+export interface ViewpointCoefficients {
+  s: number;
+  theta: number;
+}
+
+/** recommendViewpointMode の結果（設計書 §5.3 1.） */
+export interface RecommendViewpointModeResult {
+  /** 推奨モード（判定統計が閾値内なら "constant"、超過なら "grid"） */
+  recommended: ViewpointMode;
+  /** G_in 内の最大回転偏差（度） */
+  maxRotationDiffDeg: number;
+  /** G_in 内の回転偏差 95% 分位値（度） */
+  p95RotationDiffDeg: number;
+  /** G_in 内の最大相対縮尺偏差（比率） */
+  maxScaleRatioDiff: number;
+  /** G_in 内の相対縮尺偏差 95% 分位値（比率） */
+  p95ScaleRatioDiff: number;
+  /** 判定に使った標本点数（|G_in|） */
+  sampleCount: number;
+}
+
+/** recommendViewpointMode の省略可能引数 */
+export interface RecommendViewpointModeOptions {
+  /** 層の投影エンジン（既定は内蔵エンジン） */
+  projectionEngine?: ProjectionEngine;
+  /** 紙座標を含む GCP 列（各要素の先頭 gcp[0] を紙座標として参照。TIN 層の compiled.points より優先） */
+  gcps?: PointSet[];
 }

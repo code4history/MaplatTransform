@@ -87,10 +87,9 @@ export function mercs2MercViewpoint(
     const abs = Math.sqrt(Math.pow(delta[0], 2) + Math.pow(delta[1], 2));
     abss += abs;
     const outer = delta[0] * norm[1] - delta[1] * norm[0];
-    const inner = Math.acos(
-      (delta[0] * norm[0] + delta[1] * norm[1]) / abs
-    );
-    const theta = outer > 0.0 ? -1.0 * inner : inner;
+    const inner = delta[0] * norm[0] + delta[1] * norm[1];
+    // acos は 0 および ±π 近傍で約 1.5e-8 rad の段差を出すため、外積・内積から atan2 で求める
+    const theta = -Math.atan2(outer, inner);
     cosx += Math.cos(theta);
     sinx += Math.sin(theta);
   }
@@ -101,4 +100,15 @@ export function mercs2MercViewpoint(
   const zoom = Math.log((radius * MERC_MAX) / 128 / scale) / Math.log(2);
 
   return { center, zoom, rotation: omega };
+}
+
+/**
+ * 角度を (-π, π] に丸める
+ *
+ * @param radian - 角度（ラジアン）
+ * @returns (-π, π] に丸めた角度
+ */
+export function wrapAngle(radian: number): number {
+  const wrapped = radian - 2 * Math.PI * Math.round(radian / (2 * Math.PI));
+  return wrapped === -Math.PI ? Math.PI : wrapped;
 }
