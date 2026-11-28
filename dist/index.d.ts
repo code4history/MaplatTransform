@@ -77,6 +77,9 @@ export declare interface CompiledWorldFileOuter extends Omit<Compiled, "centroid
  */
 export declare function counterTri(tri: Tri): Tri;
 
+/** TIN と world file の変換面を混在させて 1 層分の surface を作る */
+export declare function createLayerSurface(data: LayerSurfaceData): SurfaceLike;
+
 /** 呼び出し側から受け取った proj4js を使い、東・北の順で変換する */
 export declare function createProj4ProjectionEngine(proj4: Proj4Factory): ProjectionEngine;
 
@@ -131,6 +134,9 @@ export declare type IndexedTinsBD = {
     [key in BiDirectionKey]?: IndexedTins;
 };
 
+/** モード 1 / 2 判定に使う統計量（§5.2。実測で "max" と "p95" を選ぶ） */
+export declare const JUDGE_STATISTIC: "max" | "p95";
+
 declare type Kinks = FeatureCollection<Point>;
 
 export declare type KinksBD = {
@@ -141,6 +147,7 @@ export declare interface LayeredMapData {
     main: LayerSurfaceData;
     sub_maps?: LayerSurfaceData[];
     maxZoom?: number;
+    viewpointMode?: ViewpointMode;
 }
 
 export declare type LayerSurfaceData = TinSurfaceData | WorldFileSurfaceData;
@@ -155,6 +162,8 @@ export declare interface MapData {
     maxZoom?: number;
     /** Sub-map layers */
     sub_maps?: SubMapData[];
+    /** 視点変換モード（地図全体で共通。省略時は "grid"） */
+    viewpointMode?: ViewpointMode;
 }
 
 /**
@@ -170,6 +179,11 @@ export declare class MapTransform {
     private mainTin;
     private subTins;
     private _maxxy;
+    /** 視点変換モード（地図全体で共通。未指定は "grid"） */
+    private _viewpointMode;
+    /** 層ごとの ViewpointField 遅延構築スロット（§2.3。読み込み時には作らない） */
+    private _fields;
+    private _layerMetas;
     /**
      * 地図データ（コンパイル済み TIN + sub_maps）をロードする
      *
@@ -178,7 +192,8 @@ export declare class MapTransform {
     setMapData(mapData: MapData): void;
     /** TIN と world file の変換面を混在させて読み込む */
     setLayeredMapData(mapData: LayeredMapData): void;
-    private _createSurface;
+    /** 読み込み時の地図全体の視点変換モード（未指定は "grid"） */
+    get viewpointMode(): ViewpointMode;
     /**
      * ピクセル座標 → メルカトル座標（最適レイヤー選択）
      *
@@ -244,20 +259,38 @@ export declare class MapTransform {
      * ビューポート → TIN 適用後メルカトル5点
      * histmap_tin.ts viewpoint2MercsAsync() の同期版
      *
+     * 中心と ViewpointField から理想相似 5 点をエンコードする（§7.1）。
+     * 周囲 4 点の幾何は中心と同じ層の格子からだけ決める。
+     *
      * @param viewpoint - ビューポート（center, zoom, rotation）
      * @param size - 画面サイズ [width, height]
+     * @param layerIndex - 層番号（省略時は従来の層選択。指定時は範囲判定なしでその層を使い、範囲外は格子端へ clamp）
      * @returns TIN 変換後のメルカトル5点
      */
-    viewpoint2Mercs(viewpoint: Viewpoint, size: [number, number]): number[][];
+    viewpoint2Mercs(viewpoint: Viewpoint, size: [number, number], layerIndex?: number): number[][];
     /**
      * TIN 適用後メルカトル5点 → ビューポート
      * histmap_tin.ts mercs2ViewpointAsync() の同期版
      *
-     * @param mercs - TIN 変換後のメルカトル5点
+     * 5 点を理想相似としてデコードし、中心と ViewpointField から復元する（§7.1）。
+     *
+     * @param mercs - TIN 適用後メルカトル5点
      * @param size - 画面サイズ [width, height]
+     * @param layerIndex - 層番号（省略時は従来の層選択。指定時は範囲判定なしでその層を使い、範囲外は格子端へ clamp）
      * @returns ビューポート（center, zoom, rotation）
      */
-    mercs2Viewpoint(mercs: number[][], size: [number, number]): Viewpoint;
+    mercs2Viewpoint(mercs: number[][], size: [number, number], layerIndex?: number): Viewpoint;
+    /**
+     * 層番号を指定して、その層の視点係数 (s, θ) を引く公開 API（§7.1 補助メソッド・M-5）。
+     * デバッグ・単体試験・`setupMapParameter` 等から、層を 1 つに固定して
+     * 中心 1 点の縮尺・向きを問い合わせるために使う。
+     *
+     * @param layerIndex - 0 = 本図、1 以上 = sub_maps[layerIndex - 1]。範囲外番号・非整数は例外
+     * @param coord - 問い合わせ座標（direction が "xy2Merc" なら紙座標、"merc2Xy" ならメルカトル座標）
+     * @param direction - "xy2Merc"（既定）= 紙 → 地理の係数参照、"merc2Xy" = 地理 → 紙
+     * @returns 視点係数（s: 縮尺比 [3857 単位 / 地図画素]、theta: 局所回転角 [rad]）
+     */
+    getViewpointCoefficients(layerIndex: number, coord: number[], direction?: "xy2Merc" | "merc2Xy"): ViewpointCoefficients;
     /** zoom2Radius の静的ラッパー */
     static zoom2Radius(size: [number, number], zoom: number): number;
     /** mercViewpoint2Mercs の静的ラッパー */
@@ -270,6 +303,12 @@ export declare class MapTransform {
     static sysCoord2Xy(sysCoord: number[], maxxy: number): number[];
     private _assertMapData;
     private _assertMaxxy;
+    /** 層番号の明示指定の検査（範囲外番号・負数・非整数は例外、§4.2 2.） */
+    private _assertLayerIndex;
+    /** 層の ViewpointField を遅延構築して返す（§2.3。読み込み時には作らない） */
+    private _fieldFor;
+    /** 中心 1 点の視点係数を層の ViewpointField から引く */
+    private _evalViewpointCoefficients;
     /**
      * レイヤーインデックスに対応する Transform インスタンスを返す（三角網描画などの用途）
      *
@@ -324,6 +363,18 @@ export declare function mercs2MercViewpoint(mercs: number[][], size: [number, nu
  */
 export declare function mercViewpoint2Mercs(center: number[], zoom: number, rotation: number, size: [number, number]): number[][];
 
+/** 内側本体（基準矩形）の長辺分割数（§2.2） */
+export declare const N_LONG = 16;
+
+/** 外周余白のセル数（§2.1・§2.2） */
+export declare const N_MARGIN = 2;
+
+/** 短辺分割数の上限（§2.2） */
+export declare const N_SHORT_MAX = 16;
+
+/** 短辺分割数の下限（§2.2。縦横比 2:1 を超える長尺図での頭打ち） */
+export declare const N_SHORT_MIN = 8;
+
 /**
  * エッジセットを正規化する
  * 古いバージョンのフォーマットを新しいフォーマットに変換する
@@ -338,6 +389,12 @@ export declare function normalizeEdges(edges: EdgeSet[] | EdgeSetLegacy[], versi
  * Two-way coordinate pair: [source, target].
  */
 export declare type PointSet = [Position, Position];
+
+/**
+ * 4 点プローブの半径（セル数）（§1.2）。
+ * 初期方針は r = min(Δx, Δy) なので 1 セル。実測（§2.2 4.）で 1/2・1/4 セルと比較する。
+ */
+export declare const PROBE_RADIUS_CELLS = 1;
 
 /** proj4js と互換性のある投影コンバーターの生成関数 */
 export declare type Proj4Factory = (from: string, to: string) => {
@@ -365,6 +422,42 @@ declare type PropertyTri = {
 export declare type PropertyTriKey = "a" | "b" | "c";
 
 /**
+ * 1 層分の視点変換モード推奨（設計書 §5.3 1.）。
+ *
+ * 紙面上の均等標本を GCP 凸包内側（`gcps` 優先、無ければ `compiled.points`。
+ * どちらも無ければ層の範囲）へ絞り、(s0, θ0) からの最大・95% 分位の回転偏差と
+ * 相対縮尺偏差を算出して、仮閾値（§5.2）内なら "constant"、超過なら "grid" を返す。
+ *
+ * @param layerSurfaceData - A（WorldFileSurface）/ B / C のいずれの層データでもよい
+ * @param options - `projectionEngine`（層の投影）、`gcps`（紙座標を含む GCP 列。Editor は Plan A でも必ず渡す）
+ */
+export declare function recommendViewpointMode(layerSurfaceData: LayerSurfaceData, options?: RecommendViewpointModeOptions): RecommendViewpointModeResult;
+
+/** recommendViewpointMode の省略可能引数 */
+export declare interface RecommendViewpointModeOptions {
+    /** 層の投影エンジン（既定は内蔵エンジン） */
+    projectionEngine?: ProjectionEngine;
+    /** 紙座標を含む GCP 列（各要素の先頭 gcp[0] を紙座標として参照。TIN 層の compiled.points より優先） */
+    gcps?: PointSet[];
+}
+
+/** recommendViewpointMode の結果（設計書 §5.3 1.） */
+export declare interface RecommendViewpointModeResult {
+    /** 推奨モード（判定統計が閾値内なら "constant"、超過なら "grid"） */
+    recommended: ViewpointMode;
+    /** G_in 内の最大回転偏差（度） */
+    maxRotationDiffDeg: number;
+    /** G_in 内の回転偏差 95% 分位値（度） */
+    p95RotationDiffDeg: number;
+    /** G_in 内の最大相対縮尺偏差（比率） */
+    maxScaleRatioDiff: number;
+    /** G_in 内の相対縮尺偏差 95% 分位値（比率） */
+    p95ScaleRatioDiff: number;
+    /** 判定に使った標本点数（|G_in|） */
+    sampleCount: number;
+}
+
+/**
  * 与えられた差分行列を回転する
  *
  * @param xys - 回転する座標の配列
@@ -380,6 +473,12 @@ export declare function rotateMatrix(xys: number[][], theta: number): number[][]
  * @returns 頂点順序が修正された三角形群
  */
 export declare function rotateVerticesTriangle(tins: Tins): Tins;
+
+/** 回転偏差の仮閾値（度）（§5.2）。これ以内かつ縮尺偏差以内なら "constant" を推奨 */
+export declare const ROTATION_THRESHOLD_DEG = 1;
+
+/** 相対縮尺偏差の仮閾値（比率）（§5.2）。2.0% */
+export declare const SCALE_RATIO_THRESHOLD = 0.02;
 
 /**
  * Strictness flags supported during transformation.
@@ -587,6 +686,18 @@ export declare interface Viewpoint {
     rotation: number;
 }
 
+/** 視点係数（局所相似）。s は [EPSG:3857 単位 / 地図画素]、theta は地図の局所回転角（ラジアン） */
+export declare interface ViewpointCoefficients {
+    s: number;
+    theta: number;
+}
+
+/**
+ * 視点変換モード（地図全体＝本図＋全副層で共通の 1 組、設計書 §3.2）。
+ * 未指定（省略）は "grid"（モード 2）として動作する。
+ */
+export declare type ViewpointMode = "constant" | "grid";
+
 /** @deprecated 2.00704 以降の MaplatTransform は重みを使わない（型の互換のためだけに残す） */
 declare type WeightBuffer = {
     [index: string]: number;
@@ -674,6 +785,14 @@ export declare type WorldFileSurfaceOptions = WorldFileSurfaceDimensions & {
 
 /** 角原点の画素座標を、半画素規約を使って CRS 座標へ変換する */
 export declare function worldFileToCrs(worldFile: WorldFile, xy: number[]): number[];
+
+/**
+ * 角度を (-π, π] に丸める
+ *
+ * @param radian - 角度（ラジアン）
+ * @returns (-π, π] に丸めた角度
+ */
+export declare function wrapAngle(radian: number): number;
 
 /**
  * ピクセル座標をシステム座標（EPSG:3857相当）に変換する

@@ -83,7 +83,8 @@ export function restoreLegacyState(
 export function deriveStrictStatus(compiled: Compiled | CompiledTransformData): StrictStatus {
   if (compiled.strict_status) return compiled.strict_status;
   if (compiled.kinks_points) return "strict_error";
-  if (compiled.tins_points.length === 2) return "loose";
+  // 旧形式（CompiledLegacy）には tins_points が無いことがある
+  if (Array.isArray(compiled.tins_points) && compiled.tins_points.length === 2) return "loose";
   return "strict";
 }
 
