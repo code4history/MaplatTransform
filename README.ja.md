@@ -99,7 +99,8 @@ const restored = transform.transform(transformed, true);
 - `recommendViewpointMode(layerSurfaceData, { projectionEngine?, gcps? })` は
   `{ recommended, maxRotationDiffDeg, p95RotationDiffDeg, maxScaleRatioDiff,
   p95ScaleRatioDiff, sampleCount }` を返し、GCP 凸包の内側（GCP が無いときは層の範囲）の
-  変動が閾値内なら `"constant"` を推奨します。
+  変動が判定基準（統計量は最大値でなく p95。p95 回転偏差 1.0° 以内かつ p95 縮尺比偏差 3% 以内）
+  以内なら `"constant"` を推奨します。
 
 ```typescript
 import { MapTransform, recommendViewpointMode } from '@maplat/transform';

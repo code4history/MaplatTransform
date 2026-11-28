@@ -249,9 +249,10 @@ export class MapTransform {
   }
 
   /**
-   * ViewpointField の分割数（nLong）・4 点プローブ半径（probeRadiusCells）を上書きする（実測用）。
+   * ViewpointField の分割数（nLong）・4 点プローブ半径（probeRadiusCells）を上書きする。
    * 呼び出し済みの層の格子は破棄され、次の視点変換で組み直される。
    * 省略した項目は viewpoint-constants の既定値に戻る。
+   * @internal（実測用。公開 API ではない）
    */
   setViewpointFieldParams(params: { nLong?: number; probeRadiusCells?: number }): void {
     this._fieldParams = { ...params };

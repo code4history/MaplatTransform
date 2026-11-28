@@ -216,7 +216,7 @@ describe("AT-7 モード 1 算出・判定基準の境界", () => {
     const withGcps = recommendViewpointMode(data, { gcps: coreGcps });
     expect(withGcps.recommended).toBe("constant");
     expect(withGcps.maxRotationDiffDeg).toBeLessThanOrEqual(1.0);
-    expect(withGcps.maxScaleRatioDiff).toBeLessThanOrEqual(0.02);
+    expect(withGcps.maxScaleRatioDiff).toBeLessThanOrEqual(0.03);
     // gcps 省略時は compiled.points（歪み含む）の凸包で判定し grid 推奨になる
     const withoutGcps = recommendViewpointMode(data);
     expect(withoutGcps.recommended).toBe("grid");
@@ -232,7 +232,7 @@ describe("AT-7 モード 1 算出・判定基準の境界", () => {
     expect(Math.abs(wrapAngle(base.theta - PHI0))).toBeLessThanOrEqual(1e-6);
   });
 
-  it("① 判定境界: Δθ_max = 1.0°・ε_s,max = 2.0% の内側で constant、外側で grid", () => {
+  it("① 判定境界: p95 回転 1.0°・p95 縮尺 3.0% の内側で constant、外側で grid", () => {
     const sampleAt = (rotDeg: number, scaleRatio: number): ViewpointSample => ({
       paper: [0, 0],
       s: 2 * (1 + scaleRatio),
@@ -255,17 +255,37 @@ describe("AT-7 モード 1 算出・判定基準の境界", () => {
       });
     // 境界ちょうど（以内）は constant、僅かに外れたら grid
     expect(judgeStats((1.0 * Math.PI) / 180, 0)).toBe("constant");
-    expect(judgeStats(0, 0.02)).toBe("constant");
+    expect(judgeStats(0, 0.03)).toBe("constant");
     expect(judgeStats((1.0 * Math.PI) / 180 + 1e-12, 0)).toBe("grid");
-    expect(judgeStats(0, 0.02 + 1e-12)).toBe("grid");
+    expect(judgeStats(0, 0.03 + 1e-12)).toBe("grid");
     // 標本経由でも僅か内外で同じ判定になる（浮動小数点の境界誤差を避けて僅か内側で確認）
     expect(judge(0.99, 0)).toBe("constant");
-    expect(judge(0, 0.019)).toBe("constant");
+    expect(judge(0, 0.029)).toBe("constant");
     expect(judge(1.01, 0)).toBe("grid");
-    expect(judge(0, 0.021)).toBe("grid");
+    expect(judge(0, 0.031)).toBe("grid");
     expect(judge(0.5, 0.01)).toBe("constant");
     expect(judge(2.0, 0.01)).toBe("grid");
-    expect(judge(0.5, 0.03)).toBe("grid");
+    expect(judge(0.5, 0.031)).toBe("grid");
+    // 判定統計は p95（2026-11-28 確定）。max が閾値超過でも p95 以内なら constant
+    expect(
+      judgeViewpointMode({
+        maxRotationDiffRad: (2.0 * Math.PI) / 180,
+        p95RotationDiffRad: (0.5 * Math.PI) / 180,
+        maxScaleRatioDiff: 0.05,
+        p95ScaleRatioDiff: 0.01,
+        sampleCount: 100
+      })
+    ).toBe("constant");
+    // p95 が超過なら max が以内でも grid
+    expect(
+      judgeViewpointMode({
+        maxRotationDiffRad: 0,
+        p95RotationDiffRad: (1.5 * Math.PI) / 180,
+        maxScaleRatioDiff: 0,
+        p95ScaleRatioDiff: 0,
+        sampleCount: 100
+      })
+    ).toBe("grid");
   });
 
   it("① max / p95 の各指標を正しく計算する", () => {
@@ -315,5 +335,45 @@ describe("AT-7 モード 1 算出・判定基準の境界", () => {
     expect(withoutGcps.recommended).toBe("constant");
     expect(withGcps.maxRotationDiffDeg).toBeLessThanOrEqual(1e-6);
     expect(withoutGcps.maxScaleRatioDiff).toBeLessThanOrEqual(1e-6);
+  });
+
+  it("③ 実在図の判定（表 6 の値）: p95・3% で fushimijo 系は constant、miesan_ginza_map は grid のまま", () => {
+    // map JSON（compiled 辞書入り）または compiled 単体のどちらでも読む
+    const loadCompiledOf = (file: string): MapData["compiled"] => {
+      const raw = JSON.parse(fs.readFileSync(file, "utf-8"));
+      return raw && typeof raw === "object" && !Array.isArray(raw) && raw.compiled && typeof raw.compiled === "object"
+        ? raw.compiled
+        : raw;
+    };
+    // 実測の表 6（docs/measurements/2026-11-28-viewpoint-field.md、gcps なしの行）の値
+    const TABLE6: {
+      id: string;
+      file: string;
+      expected: "constant" | "grid";
+      rotMaxDeg: number;
+      rotP95Deg: number;
+      scaleMaxPct: number;
+      scaleP95Pct: number;
+      sampleCount: number;
+    }[] = [
+      { id: "fushimijo_maplat_v2", file: `${__dirname}/compiled/fushimijo_maplat_v2.json`, expected: "constant", rotMaxDeg: 0.83, rotP95Deg: 0.50, scaleMaxPct: 2.73, scaleP95Pct: 2.19, sampleCount: 127 },
+      { id: "fushimijo_maplat_v3", file: `${__dirname}/compiled/fushimijo_maplat_v3.json`, expected: "constant", rotMaxDeg: 0.65, rotP95Deg: 0.44, scaleMaxPct: 2.67, scaleP95Pct: 2.13, sampleCount: 127 },
+      { id: "fushimijo_maplat_legacy", file: `${__dirname}/compiled/fushimijo_maplat.json`, expected: "constant", rotMaxDeg: 0.90, rotP95Deg: 0.69, scaleMaxPct: 3.63, scaleP95Pct: 2.05, sampleCount: 202 },
+      { id: "miesan_ginza_map_v2", file: `${__dirname}/compiled/miesan_ginza_map_v2.json`, expected: "grid", rotMaxDeg: 1.68, rotP95Deg: 1.21, scaleMaxPct: 4.17, scaleP95Pct: 2.94, sampleCount: 106 },
+      { id: "miesan_ginza_map_v3", file: `${__dirname}/compiled/miesan_ginza_map_v3.json`, expected: "grid", rotMaxDeg: 1.70, rotP95Deg: 0.91, scaleMaxPct: 5.75, scaleP95Pct: 4.02, sampleCount: 106 },
+      { id: "miesan_ginza_map_legacy", file: `${__dirname}/miesan_ginza_map.json`, expected: "grid", rotMaxDeg: 1.73, rotP95Deg: 1.24, scaleMaxPct: 4.22, scaleP95Pct: 2.95, sampleCount: 106 }
+    ];
+    for (const row of TABLE6) {
+      const data: TinSurfaceData = { kind: "tin", compiled: loadCompiledOf(row.file) };
+      const result = recommendViewpointMode(data);
+      // 指標は実測の表 6 と一致する（表は小数 2 桁のため ±0.05 で照合）
+      expect(result.sampleCount, row.id).toBe(row.sampleCount);
+      expect(result.maxRotationDiffDeg, row.id).toBeCloseTo(row.rotMaxDeg, 1);
+      expect(result.p95RotationDiffDeg, row.id).toBeCloseTo(row.rotP95Deg, 1);
+      expect(result.maxScaleRatioDiff * 100, row.id).toBeCloseTo(row.scaleMaxPct, 1);
+      expect(result.p95ScaleRatioDiff * 100, row.id).toBeCloseTo(row.scaleP95Pct, 1);
+      // 2026-11-28 確定の判定（p95・1.0° / 3%）: fushimijo 系は constant、miesan は grid
+      expect(result.recommended, row.id).toBe(row.expected);
+    }
   });
 });

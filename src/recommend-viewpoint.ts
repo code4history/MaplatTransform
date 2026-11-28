@@ -28,7 +28,8 @@ function boundsPolygonOf(bounds?: number[][]): Feature<Polygon> | undefined {
  *
  * 紙面上の均等標本を GCP 凸包内側（`gcps` 優先、無ければ `compiled.points`。
  * どちらも無ければ層の範囲）へ絞り、(s0, θ0) からの最大・95% 分位の回転偏差と
- * 相対縮尺偏差を算出して、仮閾値（§5.2）内なら "constant"、超過なら "grid" を返す。
+ * 相対縮尺偏差を算出して、閾値（§5.2。p95 回転 1.0°・p95 縮尺 3%）内なら "constant"、
+ * 超過なら "grid" を返す。
  *
  * @param layerSurfaceData - A（WorldFileSurface）/ B / C のいずれの層データでもよい
  * @param options - `projectionEngine`（層の投影）、`gcps`（紙座標を含む GCP 列。Editor は Plan A でも必ず渡す）

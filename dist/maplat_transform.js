@@ -210,8 +210,8 @@ function ze(e, t, r, n, o, i, s) {
   f = S * y, g = z * S, v = g - (g - S), w = S - v, g = z * y, b = g - (g - y), E = y - b, h = w * E - (f - v * b - w * b - v * E), d = T * l, g = z * T, v = g - (g - T), w = T - v, g = z * l, b = g - (g - l), E = l - b, x = w * E - (d - v * b - w * b - v * E), M = h - x, p = h - M, Z[0] = h - (M + p) + (p - x), a = f + M, p = a - f, m = f - (a - p) + (M - p), M = m - d, p = m - M, Z[1] = m - (M + p) + (p - d), _ = a + M, p = _ - a, Z[2] = a - (_ - p) + (M - p), Z[3] = _;
   const B = Yt($, $t, 4, Z, qt);
   f = c * y, g = z * c, v = g - (g - c), w = c - v, g = z * y, b = g - (g - y), E = y - b, h = w * E - (f - v * b - w * b - v * E), d = u * l, g = z * u, v = g - (g - u), w = u - v, g = z * l, b = g - (g - l), E = l - b, x = w * E - (d - v * b - w * b - v * E), M = h - x, p = h - M, Z[0] = h - (M + p) + (p - x), a = f + M, p = a - f, m = f - (a - p) + (M - p), M = m - d, p = m - M, Z[1] = m - (M + p) + (p - d), _ = a + M, p = _ - a, Z[2] = a - (_ - p) + (M - p), Z[3] = _;
-  const I = Yt(B, qt, 4, Z, zt);
-  return zt[I - 1];
+  const N = Yt(B, qt, 4, Z, zt);
+  return zt[N - 1];
 }
 function He(e, t, r, n, o, i) {
   const s = (t - i) * (r - o), c = (e - o) * (n - i), u = s - c, l = Math.abs(s + c);
@@ -338,8 +338,8 @@ function ir() {
         (function x(_, S, C, T, X) {
           for (; T > C; ) {
             if (T - C > 600) {
-              var A = T - C + 1, O = S - C + 1, $ = Math.log(A), B = 0.5 * Math.exp(2 * $ / 3), I = 0.5 * Math.sqrt($ * B * (A - B) / A) * (O - A / 2 < 0 ? -1 : 1), L = Math.max(C, Math.floor(S - O * B / A + I)), D = Math.min(T, Math.floor(S + (A - O) * B / A + I));
-              x(_, S, L, D, X);
+              var A = T - C + 1, O = S - C + 1, $ = Math.log(A), B = 0.5 * Math.exp(2 * $ / 3), N = 0.5 * Math.sqrt($ * B * (A - B) / A) * (O - A / 2 < 0 ? -1 : 1), I = Math.max(C, Math.floor(S - O * B / A + N)), D = Math.min(T, Math.floor(S + (A - O) * B / A + N));
+              x(_, S, I, D, X);
             }
             var P = _[S], R = C, Y = T;
             for (n(_, C, S), X(_[T], P) > 0 && n(_, C, T); R < Y; ) {
@@ -515,8 +515,8 @@ function ir() {
         this.data = E([a, m]), this.data.height = a.height + 1, this.data.leaf = !1, c(this.data, this.toBBox);
       }, i.prototype._chooseSplitIndex = function(a, m, f) {
         for (var h, d, x, _, S, C, T, X = 1 / 0, A = 1 / 0, O = m; O <= f - m; O++) {
-          var $ = u(a, 0, O, this.toBBox), B = u(a, O, f, this.toBBox), I = (d = $, x = B, _ = void 0, S = void 0, C = void 0, T = void 0, _ = Math.max(d.minX, x.minX), S = Math.max(d.minY, x.minY), C = Math.min(d.maxX, x.maxX), T = Math.min(d.maxY, x.maxY), Math.max(0, C - _) * Math.max(0, T - S)), L = g($) + g(B);
-          I < X ? (X = I, h = O, A = L < A ? L : A) : I === X && L < A && (A = L, h = O);
+          var $ = u(a, 0, O, this.toBBox), B = u(a, O, f, this.toBBox), N = (d = $, x = B, _ = void 0, S = void 0, C = void 0, T = void 0, _ = Math.max(d.minX, x.minX), S = Math.max(d.minY, x.minY), C = Math.min(d.maxX, x.maxX), T = Math.min(d.maxY, x.maxY), Math.max(0, C - _) * Math.max(0, T - S)), I = g($) + g(B);
+          N < X ? (X = N, h = O, A = I < A ? I : A) : N === X && I < A && (A = I, h = O);
         }
         return h || f - m;
       }, i.prototype._chooseSplitAxis = function(a, m, f) {
@@ -600,20 +600,20 @@ function ur() {
         if (h === 0 || d === 0 || h > 0 != d > 0) return x;
         const _ = Math.abs(h + d);
         return Math.abs(x) >= c * _ ? x : -(function(S, C, T, X, A, O, $) {
-          let B, I, L, D, P, R, Y, V, k, F, N, j, W, G, J, K, ot, Q;
+          let B, N, I, D, P, R, Y, V, k, F, L, j, W, G, J, K, ot, Q;
           const tt = S - A, et = T - A, nt = C - O, it = X - O;
-          P = (J = (V = tt - (Y = (R = 134217729 * tt) - (R - tt))) * (F = it - (k = (R = 134217729 * it) - (R - it))) - ((G = tt * it) - Y * k - V * k - Y * F)) - (N = J - (ot = (V = nt - (Y = (R = 134217729 * nt) - (R - nt))) * (F = et - (k = (R = 134217729 * et) - (R - et))) - ((K = nt * et) - Y * k - V * k - Y * F))), y[0] = J - (N + P) + (P - ot), P = (W = G - ((j = G + N) - (P = j - G)) + (N - P)) - (N = W - K), y[1] = W - (N + P) + (P - K), P = (Q = j + N) - j, y[2] = j - (Q - P) + (N - P), y[3] = Q;
+          P = (J = (V = tt - (Y = (R = 134217729 * tt) - (R - tt))) * (F = it - (k = (R = 134217729 * it) - (R - it))) - ((G = tt * it) - Y * k - V * k - Y * F)) - (L = J - (ot = (V = nt - (Y = (R = 134217729 * nt) - (R - nt))) * (F = et - (k = (R = 134217729 * et) - (R - et))) - ((K = nt * et) - Y * k - V * k - Y * F))), y[0] = J - (L + P) + (P - ot), P = (W = G - ((j = G + L) - (P = j - G)) + (L - P)) - (L = W - K), y[1] = W - (L + P) + (P - K), P = (Q = j + L) - j, y[2] = j - (Q - P) + (L - P), y[3] = Q;
           let ut = (function(ke, Vt) {
             let Gt = Vt[0];
             for (let Rt = 1; Rt < ke; Rt++) Gt += Vt[Rt];
             return Gt;
           })(4, y), Mt = u * $;
-          if (ut >= Mt || -ut >= Mt || (B = S - (tt + (P = S - tt)) + (P - A), L = T - (et + (P = T - et)) + (P - A), I = C - (nt + (P = C - nt)) + (P - O), D = X - (it + (P = X - it)) + (P - O), B === 0 && I === 0 && L === 0 && D === 0) || (Mt = l * $ + o * Math.abs(ut), (ut += tt * D + it * B - (nt * L + et * I)) >= Mt || -ut >= Mt)) return ut;
-          P = (J = (V = B - (Y = (R = 134217729 * B) - (R - B))) * (F = it - (k = (R = 134217729 * it) - (R - it))) - ((G = B * it) - Y * k - V * k - Y * F)) - (N = J - (ot = (V = I - (Y = (R = 134217729 * I) - (R - I))) * (F = et - (k = (R = 134217729 * et) - (R - et))) - ((K = I * et) - Y * k - V * k - Y * F))), w[0] = J - (N + P) + (P - ot), P = (W = G - ((j = G + N) - (P = j - G)) + (N - P)) - (N = W - K), w[1] = W - (N + P) + (P - K), P = (Q = j + N) - j, w[2] = j - (Q - P) + (N - P), w[3] = Q;
-          const Le = i(4, y, 4, w, p);
-          P = (J = (V = tt - (Y = (R = 134217729 * tt) - (R - tt))) * (F = D - (k = (R = 134217729 * D) - (R - D))) - ((G = tt * D) - Y * k - V * k - Y * F)) - (N = J - (ot = (V = nt - (Y = (R = 134217729 * nt) - (R - nt))) * (F = L - (k = (R = 134217729 * L) - (R - L))) - ((K = nt * L) - Y * k - V * k - Y * F))), w[0] = J - (N + P) + (P - ot), P = (W = G - ((j = G + N) - (P = j - G)) + (N - P)) - (N = W - K), w[1] = W - (N + P) + (P - K), P = (Q = j + N) - j, w[2] = j - (Q - P) + (N - P), w[3] = Q;
-          const Fe = i(Le, p, 4, w, g);
-          P = (J = (V = B - (Y = (R = 134217729 * B) - (R - B))) * (F = D - (k = (R = 134217729 * D) - (R - D))) - ((G = B * D) - Y * k - V * k - Y * F)) - (N = J - (ot = (V = I - (Y = (R = 134217729 * I) - (R - I))) * (F = L - (k = (R = 134217729 * L) - (R - L))) - ((K = I * L) - Y * k - V * k - Y * F))), w[0] = J - (N + P) + (P - ot), P = (W = G - ((j = G + N) - (P = j - G)) + (N - P)) - (N = W - K), w[1] = W - (N + P) + (P - K), P = (Q = j + N) - j, w[2] = j - (Q - P) + (N - P), w[3] = Q;
+          if (ut >= Mt || -ut >= Mt || (B = S - (tt + (P = S - tt)) + (P - A), I = T - (et + (P = T - et)) + (P - A), N = C - (nt + (P = C - nt)) + (P - O), D = X - (it + (P = X - it)) + (P - O), B === 0 && N === 0 && I === 0 && D === 0) || (Mt = l * $ + o * Math.abs(ut), (ut += tt * D + it * B - (nt * I + et * N)) >= Mt || -ut >= Mt)) return ut;
+          P = (J = (V = B - (Y = (R = 134217729 * B) - (R - B))) * (F = it - (k = (R = 134217729 * it) - (R - it))) - ((G = B * it) - Y * k - V * k - Y * F)) - (L = J - (ot = (V = N - (Y = (R = 134217729 * N) - (R - N))) * (F = et - (k = (R = 134217729 * et) - (R - et))) - ((K = N * et) - Y * k - V * k - Y * F))), w[0] = J - (L + P) + (P - ot), P = (W = G - ((j = G + L) - (P = j - G)) + (L - P)) - (L = W - K), w[1] = W - (L + P) + (P - K), P = (Q = j + L) - j, w[2] = j - (Q - P) + (L - P), w[3] = Q;
+          const Ie = i(4, y, 4, w, p);
+          P = (J = (V = tt - (Y = (R = 134217729 * tt) - (R - tt))) * (F = D - (k = (R = 134217729 * D) - (R - D))) - ((G = tt * D) - Y * k - V * k - Y * F)) - (L = J - (ot = (V = nt - (Y = (R = 134217729 * nt) - (R - nt))) * (F = I - (k = (R = 134217729 * I) - (R - I))) - ((K = nt * I) - Y * k - V * k - Y * F))), w[0] = J - (L + P) + (P - ot), P = (W = G - ((j = G + L) - (P = j - G)) + (L - P)) - (L = W - K), w[1] = W - (L + P) + (P - K), P = (Q = j + L) - j, w[2] = j - (Q - P) + (L - P), w[3] = Q;
+          const Fe = i(Ie, p, 4, w, g);
+          P = (J = (V = B - (Y = (R = 134217729 * B) - (R - B))) * (F = D - (k = (R = 134217729 * D) - (R - D))) - ((G = B * D) - Y * k - V * k - Y * F)) - (L = J - (ot = (V = N - (Y = (R = 134217729 * N) - (R - N))) * (F = I - (k = (R = 134217729 * I) - (R - I))) - ((K = N * I) - Y * k - V * k - Y * F))), w[0] = J - (L + P) + (P - ot), P = (W = G - ((j = G + L) - (P = j - G)) + (L - P)) - (L = W - K), w[1] = W - (L + P) + (P - K), P = (Q = j + L) - j, w[2] = j - (Q - P) + (L - P), w[3] = Q;
           const je = i(Fe, g, 4, w, v);
           return v[je - 1];
         })(b, E, M, a, m, f, _);
@@ -651,10 +651,10 @@ function lr() {
     var A = new e(16);
     for (C = 0; C < S.length; C++) A.insert(g(S[C]));
     for (var O = h * h, $ = d * d; S.length; ) {
-      var B = S.shift(), I = B.p, L = B.next.p, D = b(I, L);
+      var B = S.shift(), N = B.p, I = B.next.p, D = b(N, I);
       if (!(D < $)) {
         var P = D / O;
-        X = i(_, B.prev.p, I, L, B.next.next.p, P, A), X && Math.min(b(X, I), b(X, L)) <= P && (S.push(B), S.push(w(X, B)), _.remove(X), A.remove(B), A.insert(g(B)), A.insert(g(B.next)));
+        X = i(_, B.prev.p, N, I, B.next.next.p, P, A), X && Math.min(b(X, N), b(X, I)) <= P && (S.push(B), S.push(w(X, B)), _.remove(X), A.remove(B), A.insert(g(B)), A.insert(g(B.next)));
       }
     }
     B = T;
@@ -674,8 +674,8 @@ function lr() {
         });
       }
       for (; T.length && !T.peek().node.children; ) {
-        var B = T.pop(), I = B.node, L = E(I, h, d), D = E(I, x, _);
-        if (B.dist < L && B.dist < D && l(d, I, C) && l(x, I, C)) return I;
+        var B = T.pop(), N = B.node, I = E(N, h, d), D = E(N, x, _);
+        if (B.dist < I && B.dist < D && l(d, N, C) && l(x, N, C)) return N;
       }
       X = T.pop(), X && (X = X.node);
     }
@@ -748,9 +748,9 @@ function lr() {
     return S = f[0] - x, C = f[1] - _, S * S + C * C;
   }
   function M(f, h, d, x, _, S, C, T) {
-    var X = d - f, A = x - h, O = C - _, $ = T - S, B = f - _, I = h - S, L = X * X + A * A, D = X * O + A * $, P = O * O + $ * $, R = X * B + A * I, Y = O * B + $ * I, V = L * P - D * D, k, F, N, j, W = V, G = V;
-    V === 0 ? (F = 0, W = 1, j = Y, G = P) : (F = D * Y - P * R, j = L * Y - D * R, F < 0 ? (F = 0, j = Y, G = P) : F > W && (F = W, j = Y + D, G = P)), j < 0 ? (j = 0, -R < 0 ? F = 0 : -R > L ? F = W : (F = -R, W = L)) : j > G && (j = G, -R + D < 0 ? F = 0 : -R + D > L ? F = W : (F = -R + D, W = L)), k = F === 0 ? 0 : F / W, N = j === 0 ? 0 : j / G;
-    var J = (1 - k) * f + k * d, K = (1 - k) * h + k * x, ot = (1 - N) * _ + N * C, Q = (1 - N) * S + N * T, tt = ot - J, et = Q - K;
+    var X = d - f, A = x - h, O = C - _, $ = T - S, B = f - _, N = h - S, I = X * X + A * A, D = X * O + A * $, P = O * O + $ * $, R = X * B + A * N, Y = O * B + $ * N, V = I * P - D * D, k, F, L, j, W = V, G = V;
+    V === 0 ? (F = 0, W = 1, j = Y, G = P) : (F = D * Y - P * R, j = I * Y - D * R, F < 0 ? (F = 0, j = Y, G = P) : F > W && (F = W, j = Y + D, G = P)), j < 0 ? (j = 0, -R < 0 ? F = 0 : -R > I ? F = W : (F = -R, W = I)) : j > G && (j = G, -R + D < 0 ? F = 0 : -R + D > I ? F = W : (F = -R + D, W = I)), k = F === 0 ? 0 : F / W, L = j === 0 ? 0 : j / G;
+    var J = (1 - k) * f + k * d, K = (1 - k) * h + k * x, ot = (1 - L) * _ + L * C, Q = (1 - L) * S + L * T, tt = ot - J, et = Q - K;
     return tt * tt + et * et;
   }
   function a(f, h) {
@@ -925,7 +925,7 @@ function wr(e) {
   };
   return lt([t], r);
 }
-function Lt(e, t, r, n, o, i = !1, s) {
+function It(e, t, r, n, o, i = !1, s) {
   const c = e.map(
     (u) => {
       (!s || s < 2.00703) && (u = vr(u));
@@ -1025,7 +1025,7 @@ function xe(e) {
 function ne(e, t) {
   const r = e.vertices_points.length;
   return Array.from({ length: r }, (n, o) => {
-    const i = (o + 1) % r, s = Lt(
+    const i = (o + 1) % r, s = It(
       ["c", `b${o}`, `b${i}`],
       e.points,
       e.edgeNodes || [],
@@ -1058,7 +1058,7 @@ function Tr(e) {
   return {
     forw: dt(
       e.tins_points[0].map(
-        (r) => Lt(
+        (r) => It(
           r,
           e.points,
           e.edgeNodes || [],
@@ -1071,7 +1071,7 @@ function Tr(e) {
     ),
     bakw: dt(
       e.tins_points[t].map(
-        (r) => Lt(
+        (r) => It(
           r,
           e.points,
           e.edgeNodes || [],
@@ -1407,7 +1407,7 @@ const U = 20037508342789244e-9, Br = [
   [1, 0],
   [0, -1],
   [-1, 0]
-], Xt = 6378137, Nt = 180 / Math.PI * Math.atan(Math.sinh(Math.PI));
+], Xt = 6378137, Lt = 180 / Math.PI * Math.atan(Math.sinh(Math.PI));
 function ft(e) {
   return e.length >= 2 && Number.isFinite(e[0]) && Number.isFinite(e[1]);
 }
@@ -1453,25 +1453,25 @@ const st = {
     const r = e[0], n = e[1];
     return [
       Math.abs(r) === U ? Math.sign(r) * 180 : r / Xt * (180 / Math.PI),
-      Math.abs(n) === U ? Math.sign(n) * Nt : (2 * Math.atan(Math.exp(n / Xt)) - Math.PI / 2) * (180 / Math.PI)
+      Math.abs(n) === U ? Math.sign(n) * Lt : (2 * Math.atan(Math.exp(n / Xt)) - Math.PI / 2) * (180 / Math.PI)
     ];
   },
   fromLonLat(e, t) {
     if (!ft(e) || Math.abs(e[0]) > 180) return !1;
     const [r, n] = e;
     if (t.epsg === 4326) return Math.abs(n) <= 90 ? [r, n] : !1;
-    if (t.epsg !== 3857 || Math.abs(n) > Nt) return !1;
+    if (t.epsg !== 3857 || Math.abs(n) > Lt) return !1;
     const o = r * Math.PI / 180, i = n * Math.PI / 180, s = [
       Math.abs(r) === 180 ? Math.sign(r) * U : Xt * o,
-      Math.abs(n) === Nt ? Math.sign(n) * U : Xt * Math.log(Math.tan(Math.PI / 4 + i / 2))
+      Math.abs(n) === Lt ? Math.sign(n) * U : Xt * Math.log(Math.tan(Math.PI / 4 + i / 2))
     ];
     return s.every(Number.isFinite) ? s : !1;
   }
-}, _e = { epsg: 3857 }, oe = { epsg: 4326 }, Nr = "+proj=longlat +datum=WGS84";
+}, _e = { epsg: 3857 }, oe = { epsg: 4326 }, Lr = "+proj=longlat +datum=WGS84";
 function Ft(e) {
   return e.epsg === 3857 || e.epsg === 4326;
 }
-function Ir(e) {
+function Nr(e) {
   if (e === null || typeof e != "object" || Array.isArray(e))
     throw new Error("CRS はオブジェクトで指定してください");
   if (e.epsg !== void 0 && (!Number.isSafeInteger(e.epsg) || e.epsg <= 0))
@@ -1498,7 +1498,7 @@ function be(e) {
     throw new Error("CRS の proj4 は +proj= を含む定義で指定してください");
 }
 function Ee(e, t, r) {
-  Ir(e);
+  Nr(e);
   const n = Ft(e);
   if (e.proj4 === void 0) {
     if (e.wkt) throw new Error("WKT だけの CRS 定義に対応していません");
@@ -1520,7 +1520,7 @@ function cn(e) {
     if (s) return s;
     be(i);
     try {
-      const c = e(i, Nr);
+      const c = e(i, Lr);
       return t.set(i, c), c;
     } catch (c) {
       throw new Error(`proj4 定義を読み込めません（${String(c)}）`, { cause: c });
@@ -1599,7 +1599,7 @@ function Te(e, t, r) {
     [n / 2 + i / 2, o / 2 + s / 2]
   ];
 }
-class Lr {
+class Ir {
   crs;
   worldFile;
   projectionEngine;
@@ -1656,11 +1656,10 @@ class Lr {
     return ft(i) ? i : !1;
   }
 }
-const Fr = 16, jr = 8, fn = 16, wt = 2, kr = 1, un = "max", Dr = 1, Vr = 0.02, Gr = 1e-24;
 function Xe(e, t) {
   return Math.floor(Math.min(e[0], e[1]) / 4) * U / 128 / Math.pow(2, t);
 }
-function Wr(e, t) {
+function Fr(e, t) {
   const r = [];
   for (let n = 0; n < e.length; n++) {
     const o = e[n], i = o[0] * Math.cos(t) - o[1] * Math.sin(t), s = o[0] * Math.sin(t) + o[1] * Math.cos(t);
@@ -1670,7 +1669,7 @@ function Wr(e, t) {
 }
 function se(e, t, r, n) {
   const o = Xe(n, t);
-  return Wr(Br, r).map((c) => [
+  return Fr(Br, r).map((c) => [
     c[0] * o + e[0],
     c[1] * o + e[1]
   ]);
@@ -1699,7 +1698,7 @@ function Pe(e) {
   const t = e - 2 * Math.PI * Math.round(e / (2 * Math.PI));
   return t === -Math.PI ? Math.PI : t;
 }
-function It(e, t) {
+function Nt(e, t) {
   const r = e[0] * (2 * U) / t - U, n = -1 * (e[1] * (2 * U) / t - U);
   return [r, n];
 }
@@ -1707,6 +1706,7 @@ function ce(e, t) {
   const r = (e[0] + U) * t / (2 * U), n = (-e[1] + U) * t / (2 * U);
   return [r, n];
 }
+const jr = 16, kr = 8, wt = 2, Dr = 1, Vr = 1, Gr = 0.03, Wr = 1e-24;
 function Ct(e) {
   return Array.isArray(e) && e.length >= 2 && Number.isFinite(e[0]) && Number.isFinite(e[1]);
 }
@@ -1735,13 +1735,13 @@ function Ae(e, t) {
 function vt(e, t) {
   return e instanceof q ? e.strict_status ?? t ?? "strict" : "strict";
 }
-function Re(e, t = Fr) {
+function Re(e, t = jr) {
   const r = e.maxX - e.minX, n = e.maxY - e.minY;
   if (!(r > 0) || !(n > 0))
     throw new Error("視点グリッドの基準矩形に面積がありません");
   const o = Math.max(r, n), i = Math.min(r, n), s = Math.min(
     t,
-    Math.max(jr, Math.round(t * i / o))
+    Math.max(kr, Math.round(t * i / o))
   ), c = r >= n ? t : s, u = r >= n ? s : t, l = r / c, y = n / u;
   return {
     x0: e.minX - wt * l,
@@ -1820,10 +1820,10 @@ function ht(e, t, r) {
     const [a, m] = p[M];
     g += l[M] * y(e.ls, a, m), v += l[M] * y(e.cs, a, m), w += l[M] * y(e.sn, a, m);
   }
-  const b = Math.exp(g), E = v * v + w * w > Gr ? Math.atan2(w, v) : Math.atan2(y(e.sn, i, s), y(e.cs, i, s));
+  const b = Math.exp(g), E = v * v + w * w > Wr ? Math.atan2(w, v) : Math.atan2(y(e.sn, i, s), y(e.cs, i, s));
   return { s: b, theta: E };
 }
-function le(e, t, r, n = kr, o) {
+function le(e, t, r, n = Dr, o) {
   const i = Re(t, o), s = i.mx + 1, c = i.my + 1, u = new Float64Array(s * c), l = new Float64Array(s * c), y = new Float64Array(s * c), p = new Uint8Array(s * c), g = n * Math.min(i.dx, i.dy);
   for (let w = 0; w < c; w++)
     for (let b = 0; b < s; b++) {
@@ -1930,7 +1930,7 @@ function Oe(e, t, r) {
     }
   return u.length ? u : s.length ? s : r;
 }
-function Ne(e) {
+function Le(e) {
   if (!e.length) throw new Error("視点係数の標本がありません");
   let t = 0, r = 0, n = 0;
   for (const i of e)
@@ -1954,8 +1954,8 @@ function Qr(e, t) {
   };
 }
 function tn(e) {
-  const t = e.maxRotationDiffRad, r = e.maxScaleRatioDiff;
-  return t <= Dr * Math.PI / 180 && r <= Vr ? "constant" : "grid";
+  const t = e.p95RotationDiffRad, r = e.p95ScaleRatioDiff;
+  return t <= Vr * Math.PI / 180 && r <= Gr ? "constant" : "grid";
 }
 function en(e) {
   const t = Ye(e);
@@ -1974,7 +1974,7 @@ class Dt {
     const r = new Dt(t.mode, t.strictness), n = Ye(t);
     if (t.mode === "constant") {
       const o = Oe(t, n, Be(t, n));
-      r.constant = Ne(o);
+      r.constant = Le(o);
     } else
       r.paperGrid = n.paper, r.mercGrid = n.merc;
     return r;
@@ -1990,7 +1990,7 @@ class Dt {
     return this.mode === "constant" ? this.constant : this.strictness === "strict" ? ht(this.mercGrid, r[0], r[1]) : this.strictness === "loose" ? n ? ht(this.mercGrid, r[0], r[1]) : ht(this.paperGrid, t[0], t[1]) : ht(this.paperGrid, t[0], t[1]);
   }
 }
-function Ie(e, t, r, n, o) {
+function Ne(e, t, r, n, o) {
   Ee(t, r, () => {
     const i = n ?? e.bounds ?? (e.wh ? void 0 : e.points.map(([c]) => c)), s = e.stateFull;
     e.stateFull = !1;
@@ -2013,7 +2013,7 @@ class rn extends q {
   projectionEngine;
   layerBounds;
   validateCompiledProjection() {
-    Ie(
+    Ne(
       this,
       this.crs,
       this.projectionEngine,
@@ -2032,14 +2032,14 @@ class rn extends q {
 }
 const gt = 256;
 function kt(e) {
-  if (e.kind === "worldFile") return new Lr(e);
+  if (e.kind === "worldFile") return new Ir(e);
   if ("crs" in e && e.crs === null) throw new Error("三角網の層の CRS は null にできません");
   const t = e.crs, r = e.projectionEngine ?? st;
   if (t !== void 0 && t.epsg !== 3857) return new rn(e, t, r);
   const n = new q();
-  return n.setCompiled(e.compiled), t !== void 0 && Ie(n, t, r, e.bounds, (o) => n.transform(o, !1, !0)), n;
+  return n.setCompiled(e.compiled), t !== void 0 && Ne(n, t, r, e.bounds, (o) => n.transform(o, !1, !0)), n;
 }
-class ln {
+class fn {
   mainTin = null;
   subTins = [];
   _maxxy = 0;
@@ -2143,9 +2143,10 @@ class ln {
     return this._viewpointMode;
   }
   /**
-   * ViewpointField の分割数（nLong）・4 点プローブ半径（probeRadiusCells）を上書きする（実測用）。
+   * ViewpointField の分割数（nLong）・4 点プローブ半径（probeRadiusCells）を上書きする。
    * 呼び出し済みの層の格子は破棄され、次の視点変換で組み直される。
    * 省略した項目は viewpoint-constants の既定値に戻る。
+   * @internal（実測用。公開 API ではない）
    */
   setViewpointFieldParams(t) {
     this._fieldParams = { ...t }, this._fields = [];
@@ -2346,7 +2347,7 @@ class ln {
     }
     const { s: c, theta: u } = this._evalViewpointCoefficients(i, s, o.center, !0), l = 2 * U / this._maxxy;
     return {
-      center: It(s, this._maxxy),
+      center: Nt(s, this._maxxy),
       zoom: o.zoom - Math.log2(l / c),
       rotation: Pe(o.rotation - u)
     };
@@ -2388,7 +2389,7 @@ class ln {
   }
   /** xy2SysCoord の静的ラッパー */
   static xy2SysCoord(t, r) {
-    return It(t, r);
+    return Nt(t, r);
   }
   /** sysCoord2Xy の静的ラッパー */
   static sysCoord2Xy(t, r) {
@@ -2486,7 +2487,7 @@ class ln {
   }
   /** 内部用 xy2SysCoord（_maxxy を使用） */
   xy2SysCoordInternal(t) {
-    return It(t, this._maxxy);
+    return Nt(t, this._maxxy);
   }
 }
 function nn(e) {
@@ -2499,7 +2500,7 @@ function nn(e) {
     return;
   }
 }
-function hn(e, t) {
+function un(e, t) {
   const r = kt({
     ...e,
     projectionEngine: t?.projectionEngine ?? e.projectionEngine
@@ -2508,7 +2509,7 @@ function hn(e, t) {
     strictness: n,
     regionPolygon: nn(e.bounds),
     gcps: t?.gcps
-  }, i = en(o), s = Ne(i), c = Qr(i, s);
+  }, i = en(o), s = Le(i), c = Qr(i, s);
   return {
     recommended: tn(c),
     maxRotationDiffDeg: c.maxRotationDiffRad * 180 / Math.PI,
@@ -2519,19 +2520,11 @@ function hn(e, t) {
   };
 }
 export {
-  un as JUDGE_STATISTIC,
   Br as MERC_CROSSMATRIX,
   U as MERC_MAX,
-  ln as MapTransform,
-  Fr as N_LONG,
-  wt as N_MARGIN,
-  fn as N_SHORT_MAX,
-  jr as N_SHORT_MIN,
-  kr as PROBE_RADIUS_CELLS,
-  Dr as ROTATION_THRESHOLD_DEG,
-  Vr as SCALE_RATIO_THRESHOLD,
+  fn as MapTransform,
   q as Transform,
-  Lr as WorldFileSurface,
+  Ir as WorldFileSurface,
   st as builtinProjectionEngine,
   sn as counterTri,
   kt as createLayerSurface,
@@ -2541,14 +2534,14 @@ export {
   se as mercViewpoint2Mercs,
   ae as mercs2MercViewpoint,
   Mr as normalizeEdges,
-  hn as recommendViewpointMode,
-  Wr as rotateMatrix,
+  un as recommendViewpointMode,
+  Fr as rotateMatrix,
   on as rotateVerticesTriangle,
   ce as sysCoord2Xy,
   gr as transformArr,
   we as validateWorldFile,
   ve as worldFileToCrs,
   Pe as wrapAngle,
-  It as xy2SysCoord,
+  Nt as xy2SysCoord,
   Xe as zoom2Radius
 };

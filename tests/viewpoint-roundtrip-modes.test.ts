@@ -18,11 +18,11 @@ const SIZE: [number, number] = [800, 600];
 const SIZE_LARGE: [number, number] = [1920, 1080];
 /**
  * 同サイズ往復の受け入れ基準（§9.1）。
- * center は初期値 1e-6 px どおり（実測最大 1.1e-9 px で余裕あり）。
- * zoom / rotation の初期値 1e-7 は 5 点 mercs 中継の浮動小数点限界
+ * center は 1e-6 px（実測最大 1.1e-9 px で余裕あり）。
+ * zoom / rotation は 5 点 mercs 中継の浮動小数点限界
  * （z=19・画面 400×300 で実測最大 1.9e-6。絶対値 1e7 級の座標から半径 0.02 級の
- * 差分を引く際の相殺落ち）に達しないため、実測値に基づき暫定 5e-6 とする
- * （§9.1「最終値は実装時の実測で詰める」。段 2 の実測で確定）。
+ * 差分を引く際の相殺落ち）に達しないため 5e-6。
+ * 2026-11-28 実測で確定（根拠 docs/measurements/2026-11-28-viewpoint-field.md・設計書 §10.2）。
  */
 const CENTER_TOL_PX = 1e-6;
 const ZOOM_TOL = 5e-6;

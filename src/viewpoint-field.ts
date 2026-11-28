@@ -250,7 +250,7 @@ function invertCoefficients(coef: ViewpointCoefficients | null): ViewpointCoeffi
 /**
  * 1 格子点の係数を 4 点プローブで求める（§1.2）。
  * 全プローブ失敗・境界外れ・det ≤ 0 のときは null（無効印）。
- * 実測（§2.2 4. の局所値の基準）でも使うため公開する。
+ * @internal（実測用。§2.2 4. の局所値の基準にも使う。公開 API ではない）
  */
 export function probeCoefficients(
   surface: SurfaceLike,
@@ -578,7 +578,7 @@ export function deviationStats(samples: RawSample[], base: ViewpointCoefficients
   };
 }
 
-/** 判定統計（仮定数 JUDGE_STATISTIC）が仮閾値内なら "constant"、超過なら "grid"（§5.2） */
+/** 判定統計（JUDGE_STATISTIC）が閾値内なら "constant"、超過なら "grid"（§5.2） */
 export function judgeViewpointMode(stats: DeviationStats): ViewpointMode {
   const rotationDiff =
     JUDGE_STATISTIC === "max" ? stats.maxRotationDiffRad : stats.p95RotationDiffRad;

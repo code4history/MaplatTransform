@@ -134,9 +134,6 @@ export declare type IndexedTinsBD = {
     [key in BiDirectionKey]?: IndexedTins;
 };
 
-/** モード 1 / 2 判定に使う統計量（§5.2。実測で "max" と "p95" を選ぶ） */
-export declare const JUDGE_STATISTIC: "max" | "p95";
-
 declare type Kinks = FeatureCollection<Point>;
 
 export declare type KinksBD = {
@@ -197,9 +194,10 @@ export declare class MapTransform {
     /** 読み込み時の地図全体の視点変換モード（未指定は "grid"） */
     get viewpointMode(): ViewpointMode;
     /**
-     * ViewpointField の分割数（nLong）・4 点プローブ半径（probeRadiusCells）を上書きする（実測用）。
+     * ViewpointField の分割数（nLong）・4 点プローブ半径（probeRadiusCells）を上書きする。
      * 呼び出し済みの層の格子は破棄され、次の視点変換で組み直される。
      * 省略した項目は viewpoint-constants の既定値に戻る。
+     * @internal（実測用。公開 API ではない）
      */
     setViewpointFieldParams(params: {
         nLong?: number;
@@ -374,18 +372,6 @@ export declare function mercs2MercViewpoint(mercs: number[][], size: [number, nu
  */
 export declare function mercViewpoint2Mercs(center: number[], zoom: number, rotation: number, size: [number, number]): number[][];
 
-/** 内側本体（基準矩形）の長辺分割数（§2.2） */
-export declare const N_LONG = 16;
-
-/** 外周余白のセル数（§2.1・§2.2） */
-export declare const N_MARGIN = 2;
-
-/** 短辺分割数の上限（§2.2） */
-export declare const N_SHORT_MAX = 16;
-
-/** 短辺分割数の下限（§2.2。縦横比 2:1 を超える長尺図での頭打ち） */
-export declare const N_SHORT_MIN = 8;
-
 /**
  * エッジセットを正規化する
  * 古いバージョンのフォーマットを新しいフォーマットに変換する
@@ -400,12 +386,6 @@ export declare function normalizeEdges(edges: EdgeSet[] | EdgeSetLegacy[], versi
  * Two-way coordinate pair: [source, target].
  */
 export declare type PointSet = [Position, Position];
-
-/**
- * 4 点プローブの半径（セル数）（§1.2）。
- * 初期方針は r = min(Δx, Δy) なので 1 セル。実測（§2.2 4.）で 1/2・1/4 セルと比較する。
- */
-export declare const PROBE_RADIUS_CELLS = 1;
 
 /** proj4js と互換性のある投影コンバーターの生成関数 */
 export declare type Proj4Factory = (from: string, to: string) => {
@@ -437,7 +417,8 @@ export declare type PropertyTriKey = "a" | "b" | "c";
  *
  * 紙面上の均等標本を GCP 凸包内側（`gcps` 優先、無ければ `compiled.points`。
  * どちらも無ければ層の範囲）へ絞り、(s0, θ0) からの最大・95% 分位の回転偏差と
- * 相対縮尺偏差を算出して、仮閾値（§5.2）内なら "constant"、超過なら "grid" を返す。
+ * 相対縮尺偏差を算出して、閾値（§5.2。p95 回転 1.0°・p95 縮尺 3%）内なら "constant"、
+ * 超過なら "grid" を返す。
  *
  * @param layerSurfaceData - A（WorldFileSurface）/ B / C のいずれの層データでもよい
  * @param options - `projectionEngine`（層の投影）、`gcps`（紙座標を含む GCP 列。Editor は Plan A でも必ず渡す）
@@ -484,12 +465,6 @@ export declare function rotateMatrix(xys: number[][], theta: number): number[][]
  * @returns 頂点順序が修正された三角形群
  */
 export declare function rotateVerticesTriangle(tins: Tins): Tins;
-
-/** 回転偏差の仮閾値（度）（§5.2）。これ以内かつ縮尺偏差以内なら "constant" を推奨 */
-export declare const ROTATION_THRESHOLD_DEG = 1;
-
-/** 相対縮尺偏差の仮閾値（比率）（§5.2）。2.0% */
-export declare const SCALE_RATIO_THRESHOLD = 0.02;
 
 /**
  * Strictness flags supported during transformation.

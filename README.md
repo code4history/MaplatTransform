@@ -106,7 +106,9 @@ leg overflow.
 - `recommendViewpointMode(layerSurfaceData, { projectionEngine?, gcps? })` returns
   `{ recommended, maxRotationDiffDeg, p95RotationDiffDeg, maxScaleRatioDiff,
   p95ScaleRatioDiff, sampleCount }` and recommends `"constant"` when the GCP hull
-  interior (or, without GCPs, the layer extent) varies within the thresholds.
+  interior (or, without GCPs, the layer extent) varies within the judgment
+  criteria (p95 rotation deviation ≤ 1.0° and p95 scale ratio deviation ≤ 3%;
+  judged on the p95 statistic rather than the maximum).
 
 ```typescript
 import { MapTransform, recommendViewpointMode } from '@maplat/transform';
