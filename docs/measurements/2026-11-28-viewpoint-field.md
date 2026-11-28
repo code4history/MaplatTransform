@@ -13,7 +13,7 @@
 | 項目 | 値 |
 |---|---|
 | 計測日 | 2026-11-28 |
-| commit | c29a1601cb30fcd67e61ccefd11a3807f1d54500 |
+| commit | 1b69a23a55cc2f4e48c01131e909ccafb2a4fd14 |
 | CPU | Apple M1 × 8 コア |
 | メモリ | 16.0 GB |
 | OS | darwin 27.2.0 arm64 |
@@ -363,6 +363,69 @@ GCP 凸包の外接矩形の中段を 1 px 刻みでパンし、公開 API `view
 `recommendViewpointMode` の指標と、最大値・95% 分位のそれぞれで閾値を当てたときの推奨。`gcps` を渡したときと渡さないとき。
 
 <!-- bench:sec5 -->
+既定定数（N16 r1）の `recommendViewpointMode` の出力。閾値は回転 1.0°・縮尺 2.0%。
+「max 判定」は最大値で、「p95 判定」は 95% 分位で閾値を当てたときの推奨（§5.2 の max vs p95 選定材料）。
+「gcps あり」は紙座標つき GCP を明示渡ししたとき（TIN は compiled.points と同じ。AT 合成歪み TIN のみ中央 5×5）。
+
+#### 表 6 判定（recommendViewpointMode・閾値 1.0° / 2.0%）
+| 地図 | GCP | 回転max(°) | 回転p95(°) | 縮尺max(%) | 縮尺p95(%) | 標本数 | max判定 | p95判定 | 備考 |
+|---|---|---|---|---|---|---|---|---|---|
+| 18th_mapcontest_ea_v2 | gcps なし | 1.61 | 1.49 | 3.75 | 3.53 | 24 | grid | grid |  |
+| 18th_mapcontest_ea_v2 | gcps あり | 1.61 | 1.49 | 3.75 | 3.53 | 24 | grid | grid |  |
+| 18th_mapcontest_ea_v3 | gcps なし | 4.28 | 3.92 | 12.48 | 11.25 | 24 | grid | grid |  |
+| 18th_mapcontest_ea_v3 | gcps あり | 4.28 | 3.92 | 12.48 | 11.25 | 24 | grid | grid |  |
+| 18th_mapcontest_gp_v2 | gcps なし | 19.27 | 17.00 | 26.08 | 21.60 | 52 | grid | grid |  |
+| 18th_mapcontest_gp_v2 | gcps あり | 19.27 | 17.00 | 26.08 | 21.60 | 52 | grid | grid |  |
+| 18th_mapcontest_gp_v3 | gcps なし | 37.04 | 25.87 | 44.91 | 42.25 | 52 | grid | grid |  |
+| 18th_mapcontest_gp_v3 | gcps あり | 37.04 | 25.87 | 44.91 | 42.25 | 52 | grid | grid |  |
+| 1932_nobeoka_v2 | gcps なし | 10.02 | 6.61 | 13.85 | 12.90 | 55 | grid | grid |  |
+| 1932_nobeoka_v2 | gcps あり | 10.02 | 6.61 | 13.85 | 12.90 | 55 | grid | grid |  |
+| 1932_nobeoka_v3 | gcps なし | 12.63 | 7.29 | 19.57 | 14.55 | 55 | grid | grid |  |
+| 1932_nobeoka_v3 | gcps あり | 12.63 | 7.29 | 19.57 | 14.55 | 55 | grid | grid |  |
+| 1932_nobeoka_sub0_v3 | gcps なし | 8.69 | 4.35 | 15.05 | 7.18 | 81 | grid | grid |  |
+| 1932_nobeoka_sub0_v3 | gcps あり | 8.69 | 4.35 | 15.05 | 7.18 | 81 | grid | grid |  |
+| fushimijo_maplat_v2 | gcps なし | 0.83 | 0.50 | 2.73 | 2.19 | 127 | grid | grid |  |
+| fushimijo_maplat_v2 | gcps あり | 0.83 | 0.50 | 2.73 | 2.19 | 127 | grid | grid |  |
+| fushimijo_maplat_v3 | gcps なし | 0.65 | 0.44 | 2.67 | 2.13 | 127 | grid | grid |  |
+| fushimijo_maplat_v3 | gcps あり | 0.65 | 0.44 | 2.67 | 2.13 | 127 | grid | grid |  |
+| miesan_ginza_map_v2 | gcps なし | 1.68 | 1.21 | 4.17 | 2.94 | 106 | grid | grid |  |
+| miesan_ginza_map_v2 | gcps あり | 1.68 | 1.21 | 4.17 | 2.94 | 106 | grid | grid |  |
+| miesan_ginza_map_v3 | gcps なし | 1.70 | 0.91 | 5.75 | 4.02 | 106 | grid | grid |  |
+| miesan_ginza_map_v3 | gcps あり | 1.70 | 0.91 | 5.75 | 4.02 | 106 | grid | grid |  |
+| naramachi_yasui_bunko_v2 | gcps なし | 34.75 | 16.79 | 148.47 | 80.34 | 172 | grid | grid |  |
+| naramachi_yasui_bunko_v2 | gcps あり | 34.75 | 16.79 | 148.47 | 80.34 | 172 | grid | grid |  |
+| naramachi_yasui_bunko_v3 | gcps なし | 35.83 | 19.30 | 124.80 | 93.40 | 172 | grid | grid |  |
+| naramachi_yasui_bunko_v3 | gcps あり | 35.83 | 19.30 | 124.80 | 93.40 | 172 | grid | grid |  |
+| naramachi_yasui_revised_v2 | gcps なし | 34.75 | 16.79 | 148.47 | 80.34 | 172 | grid | grid |  |
+| naramachi_yasui_revised_v2 | gcps あり | 34.75 | 16.79 | 148.47 | 80.34 | 172 | grid | grid |  |
+| naramachi_yasui_revised_v3 | gcps なし | 28.30 | 16.46 | 380.42 | 69.73 | 172 | grid | grid |  |
+| naramachi_yasui_revised_v3 | gcps あり | 28.30 | 16.46 | 380.42 | 69.73 | 172 | grid | grid |  |
+| tatebayashi_castle_akimoto_v2 | gcps なし | 22.48 | 11.04 | 42.20 | 31.00 | 106 | grid | grid |  |
+| tatebayashi_castle_akimoto_v2 | gcps あり | 22.48 | 11.04 | 42.20 | 31.00 | 106 | grid | grid |  |
+| tatebayashi_castle_akimoto_v3 | gcps なし | 14.41 | 10.94 | 38.44 | 30.26 | 106 | grid | grid |  |
+| tatebayashi_castle_akimoto_v3 | gcps あり | 14.41 | 10.94 | 38.44 | 30.26 | 106 | grid | grid |  |
+| tatebayashi_kaei_jokamachi_v3 | gcps なし | 7.48 | 5.95 | 19.88 | 9.97 | 185 | grid | grid |  |
+| tatebayashi_kaei_jokamachi_v3 | gcps あり | 7.48 | 5.95 | 19.88 | 9.97 | 185 | grid | grid |  |
+| tatebayashi_kaei_jokamachi_v2 | gcps なし | 8.84 | 7.25 | 18.13 | 9.79 | 185 | grid | grid |  |
+| tatebayashi_kaei_jokamachi_v2 | gcps あり | 8.84 | 7.25 | 18.13 | 9.79 | 185 | grid | grid |  |
+| burakita-2024 | gcps なし | 6.56 | 5.26 | 43.58 | 31.18 | 75 | grid | grid |  |
+| burakita-2024 | gcps あり | 6.56 | 5.26 | 43.58 | 31.18 | 75 | grid | grid |  |
+| fushimijo_maplat_legacy | gcps なし | 0.90 | 0.69 | 3.63 | 2.05 | 202 | grid | grid |  |
+| fushimijo_maplat_legacy | gcps あり | 0.90 | 0.69 | 3.63 | 2.05 | 202 | grid | grid |  |
+| naramachi_yasui_bunko_legacy | gcps なし | 34.57 | 17.79 | 521.18 | 85.78 | 177 | grid | grid |  |
+| naramachi_yasui_bunko_legacy | gcps あり | 34.57 | 17.79 | 521.18 | 85.78 | 177 | grid | grid |  |
+| miesan_ginza_map_legacy | gcps なし | 1.73 | 1.24 | 4.22 | 2.95 | 106 | grid | grid |  |
+| miesan_ginza_map_legacy | gcps あり | 1.73 | 1.24 | 4.22 | 2.95 | 106 | grid | grid |  |
+| AT_planA_45 | gcps なし | 0.00 | 0.00 | 0.00 | 0.00 | 221 | constant | constant |  |
+| AT_planA_45 | gcps あり | — | — | — | — | — | — | — | GCP なし |
+| AT_distortedTin | gcps なし | 30.11 | 22.43 | 40.64 | 27.17 | 289 | grid | grid |  |
+| AT_distortedTin | gcps あり | 0.00 | 0.00 | 0.00 | 0.00 | 49 | constant | constant |  |
+| AT_synthetic_main | gcps なし | 0.00 | 0.00 | 0.00 | 0.00 | 221 | constant | constant |  |
+| AT_synthetic_main | gcps あり | 0.00 | 0.00 | 0.00 | 0.00 | 221 | constant | constant |  |
+| AT_synthetic_wide_station | gcps なし | 0.00 | 0.00 | 0.00 | 0.00 | 238 | constant | constant |  |
+| AT_synthetic_wide_station | gcps あり | 0.00 | 0.00 | 0.00 | 0.00 | 238 | constant | constant |  |
+| AT_B_fushimijo_wf | gcps なし | 0.00 | 0.00 | 0.00 | 0.00 | 127 | constant | constant |  |
+| AT_B_fushimijo_wf | gcps あり | 0.00 | 0.00 | 0.00 | 0.00 | 127 | constant | constant |  |
 <!-- /bench:sec5 -->
 
 ## 6. 表から読み取れること（観察）
@@ -370,4 +433,12 @@ GCP 凸包の外接矩形の中段を 1 px 刻みでパンし、公開 API `view
 （決定はしない。決めるのは人間。）
 
 <!-- bench:obs -->
+1. **局所差（表 2a/2b）と分割数**: `N_long` を上げるほど p95 はほぼ単調に改善する（例: fushimijo_v3 回転 p95 2.4→1.8°・縮尺 p95 6.0→4.0%、gp_v2 回転 p95 24→15°）。N32→N64 の改善幅は図によっては僅かで、頭打ちが見える（ea_v2 回転 max 22.3→21.0°）。max は歪みの強い図（奈良町・鳥瞰）で数十度・数百% に達し、どの組でも潰せない（局所接線〔r=1px〕と格子平均の性質の差であり、鳥瞰図の収縮域では局所縮尺が 0.03 程度まで落ちる点が max を支配する）。
+2. **局所差とプローブ半径**: `r` は 0.5 セルが局所差に僅かに良く（例: gp_v2 N64 で回転 p95 14.9→18.0°〔r0.5→r2〕）、2 セルは p95 が悪化するか図により互角。一様合成図（Plan A・AT 合成多層・B）は全組で 0.00（格子も局所も厳密一致）。
+3. **旧 5 点方式（表 2c）**: 旧方式は高ズーム（5 点半径 4〜30 px）ほど局所値に近く（回転 p95 0.6〜3°）、低ズーム（半径数百〜2000 px）では離れる（回転 p95 2〜32°・縮尺 p95 最大 192%）。既定の格子（N16 r1）は低ズームでは旧 5 点に近く（格子 vs 旧 p95 1〜2°）、高ズームでは旧 5 点のほうが局所に近い（格子 vs 旧 p95 2〜6° に開く）。§6.2 の「旧方式の高ズーム局所合いの強みとラウンドトリップ不成立」の記述と整合する。
+4. **滑らかさ（表 3）**: 全組で 1 px 段差は旧 5 点参考値（0.14〜1.65°）より明確に小さく、エッジ跨ぎの跳びに相当する突発は無い（AT 合成の急歪み点でも段差は連続な勾配由来）。粗い格子（N8）・大きい r ほど段差は小さく（N64 r0.5 が最大で gp_v2 0.27°/px・AT 合成歪み 4.5°/px）、細かい格子ほど局所の勾配に忠実になる。AT-5 の初期目安 0.05°/step は、N32/N64 では急勾配の実地図・合成歪みで超過するが、これは連続な勾配の大きさでありバタつき（不連続）ではない。
+5. **往復（表 4）**: strict は組によらず center ≈ 1e-9 px・zoom/rotation ≈ 1e-7（AT-1 暫定許容 5e-6 に余裕があり、組の選び方では変わらない）。loose は座標往復自体が非厳密（center 50〜85 px）で、紙側・地理側グリッドの係数差（zoom 0.02〜1.5）が乗る（§4.2 の「loose は厳密往復の対象外」と一致）。strict_error は逆変換例外のため対象外。
+6. **速度（表 5）**: 索引ありは N16 で 1〜2 ms・N64 で 8〜21 ms（loose は 2 面で約 2 倍）と遅延構築に十分。索引なしは奈良町クラスで N16 約 0.4 s・N64 約 4.4 s と §2.3 の 100 ms 目安を大きく超過し、索引が効かない TIN では分割数を上げるほど厳しくなる。モード 1 起動時（1 層 + s0）は 1.7〜2.5 ms、視点変換 1 回は 0.7〜1.4 µs（格子構築後・組に依存しない）。
+7. **判定（表 6）**: 一様図（Plan A・AT 合成多層・B）は constant、実在の古地図 24 図はすべて grid。fushimijo 系は回転 max 0.65〜0.90° で閾値 1.0° の内側だが縮尺 max 2.7% で 2% を超過して grid となり、閾値の置き方（特に縮尺側）で constant に落ちる余地がある。max と p95 で推奨が分かれた図は今回無く、両者の差は指標の値に現れるにとどまる（例: ea_v2 回転 1.61 vs 1.49°）。AT 合成歪み TIN は全 GCP では grid・中央 5×5 の `gcps` 渡しでは constant となり、凸包絞り（§5.1）が判定を変えることを確認。
+8. **つり合い**: 局所差は `N_long` 大・`r` 小ほど良く、1 px 段差（滑らかさの指標）は `N_long` 小・`r` 大ほど小さく、速度は `N_long` にほぼ比例する。N8 r2（最速・最平滑・局所差大）と N64 r0.5（最遅・局所差小）の両端に対し、N16〜N32 × r1 前後が中間帯。**どの組を採るかの決定は人間が行う。**
 <!-- /bench:obs -->

@@ -184,6 +184,8 @@ export declare class MapTransform {
     /** 層ごとの ViewpointField 遅延構築スロット（§2.3。読み込み時には作らない） */
     private _fields;
     private _layerMetas;
+    /** ViewpointField の分割数・プローブ半径の上書き（実測用。省略時は viewpoint-constants の既定値） */
+    private _fieldParams;
     /**
      * 地図データ（コンパイル済み TIN + sub_maps）をロードする
      *
@@ -194,6 +196,15 @@ export declare class MapTransform {
     setLayeredMapData(mapData: LayeredMapData): void;
     /** 読み込み時の地図全体の視点変換モード（未指定は "grid"） */
     get viewpointMode(): ViewpointMode;
+    /**
+     * ViewpointField の分割数（nLong）・4 点プローブ半径（probeRadiusCells）を上書きする（実測用）。
+     * 呼び出し済みの層の格子は破棄され、次の視点変換で組み直される。
+     * 省略した項目は viewpoint-constants の既定値に戻る。
+     */
+    setViewpointFieldParams(params: {
+        nLong?: number;
+        probeRadiusCells?: number;
+    }): void;
     /**
      * ピクセル座標 → メルカトル座標（最適レイヤー選択）
      *
