@@ -77,9 +77,6 @@ export declare interface CompiledWorldFileOuter extends Omit<Compiled, "centroid
  */
 export declare function counterTri(tri: Tri): Tri;
 
-/** TIN と world file の変換面を混在させて 1 層分の surface を作る */
-export declare function createLayerSurface(data: LayerSurfaceData): SurfaceLike;
-
 /** 呼び出し側から受け取った proj4js を使い、東・北の順で変換する */
 export declare function createProj4ProjectionEngine(proj4: Proj4Factory): ProjectionEngine;
 
@@ -181,8 +178,6 @@ export declare class MapTransform {
     /** 層ごとの ViewpointField 遅延構築スロット（§2.3。読み込み時には作らない） */
     private _fields;
     private _layerMetas;
-    /** ViewpointField の分割数・プローブ半径の上書き（実測用。省略時は viewpoint-constants の既定値） */
-    private _fieldParams;
     /**
      * 地図データ（コンパイル済み TIN + sub_maps）をロードする
      *
@@ -193,16 +188,6 @@ export declare class MapTransform {
     setLayeredMapData(mapData: LayeredMapData): void;
     /** 読み込み時の地図全体の視点変換モード（未指定は "grid"） */
     get viewpointMode(): ViewpointMode;
-    /**
-     * ViewpointField の分割数（nLong）・4 点プローブ半径（probeRadiusCells）を上書きする。
-     * 呼び出し済みの層の格子は破棄され、次の視点変換で組み直される。
-     * 省略した項目は viewpoint-constants の既定値に戻る。
-     * @internal（実測用。公開 API ではない）
-     */
-    setViewpointFieldParams(params: {
-        nLong?: number;
-        probeRadiusCells?: number;
-    }): void;
     /**
      * ピクセル座標 → メルカトル座標（最適レイヤー選択）
      *
@@ -300,6 +285,21 @@ export declare class MapTransform {
      * @returns 視点係数（s: 縮尺比 [3857 単位 / 地図画素]、theta: 局所回転角 [rad]）
      */
     getViewpointCoefficients(layerIndex: number, coord: number[], direction?: "xy2Merc" | "merc2Xy"): ViewpointCoefficients;
+    /**
+     * Core の既定ズーム（mercZoom が無い地図）のための口（§7.2 OQ-3）。
+     * モード 2 では格子を作らずに紙の中心で測る: その層の面で紙の xy の十字 4 点
+     * （半径 radiusPx、ignoreBounds = true）を測り、§1.2 の式で (s, theta) を返すだけ。
+     * 視点グリッド（ViewpointField）は作らない（既存の probeCoefficients を使う）。
+     *
+     * @param layerIndex - 0 = 本図、1 以上 = sub_maps[layerIndex - 1]。範囲外番号・非整数は例外
+     * @param xy - 紙座標（十字 4 点の中心）
+     * @param radiusPx - 十字 4 点の半径（紙の画素単位。Core の既定値は 150）
+     * @returns 視点係数（s: 縮尺比 [3857 単位 / 地図画素]、theta: 局所回転角 [rad]）
+     */
+    probeViewpointCoefficients(layerIndex: number, xy: [number, number], radiusPx: number): {
+        s: number;
+        theta: number;
+    };
     /** zoom2Radius の静的ラッパー */
     static zoom2Radius(size: [number, number], zoom: number): number;
     /** mercViewpoint2Mercs の静的ラッパー */
@@ -325,7 +325,10 @@ export declare class MapTransform {
      * @returns 対応する Transform、または範囲外の場合は null
      */
     getLayerTransform(idx: number): Transform | null;
-    /** レイヤーインデックスに対応する変換面を返す */
+    /**
+     * レイヤーインデックスに対応する変換面を返す。
+     * 返した面を外で差し替えたら、地図を読み込み直すこと（視点の格子は作り直されない）。
+     */
     getSurfaceTransform(idx: number): SurfaceLike | null;
     /** レイヤー数を返す（メイン + sub 数） */
     get layerCount(): number;
@@ -771,14 +774,6 @@ export declare type WorldFileSurfaceOptions = WorldFileSurfaceDimensions & {
 
 /** 角原点の画素座標を、半画素規約を使って CRS 座標へ変換する */
 export declare function worldFileToCrs(worldFile: WorldFile, xy: number[]): number[];
-
-/**
- * 角度を (-π, π] に丸める
- *
- * @param radian - 角度（ラジアン）
- * @returns (-π, π] に丸めた角度
- */
-export declare function wrapAngle(radian: number): number;
 
 /**
  * ピクセル座標をシステム座標（EPSG:3857相当）に変換する
