@@ -6,6 +6,8 @@
 
 ### Added
 - Added round-trip viewpoint conversion: per-layer lazily built `ViewpointField` (mode 2 grid / mode 1 constant via `viewpointMode`), an optional `layerIndex` on `viewpoint2Mercs` / `mercs2Viewpoint`, `MapTransform.getViewpointCoefficients()`, and `recommendViewpointMode()` (judged on the p95 statistic: p95 rotation deviation ≤ 1.0° and p95 scale ratio deviation ≤ 3% recommend `"constant"`). ラウンドトリップ対応の視点変換（層ごとの `ViewpointField` 遅延構築・`viewpointMode`・省略可能な `layerIndex`・`getViewpointCoefficients`・`recommendViewpointMode`〔統計量は p95。p95 回転偏差 1.0° 以内かつ p95 縮尺比偏差 3% 以内で `"constant"` を推奨〕）を追加。
+- Added `MapTransform.probeViewpointCoefficients(layerIndex, xy, radiusPx)`, the entry point for Core's default zoom (maps without `mercZoom`): in mode 2 it measures at the paper center without building a grid.
+- Core の既定ズーム（mercZoom が無い地図）のための口 `MapTransform.probeViewpointCoefficients(layerIndex, xy, radiusPx)` を追加（モード 2 では格子を作らずに紙の中心で測る）。
 - Added `createProj4ProjectionEngine(proj4)` for world-file and TIN layers, including TINs with world-file outer transforms. Proj4js is an optional peer dependency. `CrsObject.epsg` is optional; layers outside EPSG:3857 and EPSG:4326 require a proj4 definition.
 - world file・三角網の層（外周に world file を使う三角網を含む）に `createProj4ProjectionEngine(proj4)` を追加。proj4js は任意の peer 依存。`CrsObject.epsg` を任意にし、EPSG:3857・4326 以外の層の変換には proj4 定義を必須にした。
 - Added `WorldFileSurface`, `ProjectionEngine`, `SurfaceLike`, and layered map loading through `MapTransform.setLayeredMapData()` / `getSurfaceTransform()`. The built-in projection engine supports EPSG:3857 and EPSG:4326.
@@ -16,6 +18,14 @@
 - compiled の鍵 `outerTransform: "extrapolate" | "worldFile"` と `worldFile` を追加。既定は `"extrapolate"`。world file モードでは `worldFile` が必須で、`vertices_params`・`centroid_point` は省略可能。
 - Restored the original required fields on `Compiled` and added `CompiledWorldFileOuter` for world-file-backed TIN boundaries. Hardened CRS normalization, finite output checks, bounds handling, and indexed outer-boundary lookup.
 - `Compiled` の従来の必須フィールドを復元し、world file 外周を使う三角網用に `CompiledWorldFileOuter` を追加。CRS 正規化、非有限出力、bounds 判定、外周探索を修正。
+
+### Changed
+- Changed what `viewpoint2Mercs` / `mercs2Viewpoint` return: on TIN maps the zoom and rotation change (up to 0.40 zoom and 5.6° rotation on the 1932 Nobeoka map), and the five points are now an ideal similarity.
+- `viewpoint2Mercs` / `mercs2Viewpoint` の戻り値が変わる（三角網の地図で zoom・rotation が変わる。延岡で最大 zoom 0.40・回転 5.6°。5 点は理想の相似になる）。
+- The surrounding four points no longer throw when they fall outside the map.
+- 周りの 4 点が範囲の外に出ても例外にならない。
+- Replaced the `acos` in `mercs2MercViewpoint` with `atan2`.
+- `mercs2MercViewpoint` の acos を atan2 にした。
 
 ### Fixed
 - 細工された変換データで索引づくりが 2 乗になるのを上限で止めた (#25)
